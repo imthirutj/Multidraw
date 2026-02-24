@@ -5,11 +5,15 @@ import DrawToolbar from '../game/DrawToolbar';
 import PlayerSidebar from '../game/PlayerSidebar';
 import Chat from '../game/Chat';
 import type { DrawTool } from '../../types/game.types';
+import socket from '../../config/socket';
 
 const TOTAL_TIME_REF = { current: 80 };
 
 export default function GameScreen() {
-    const { round, totalRounds, hint, timeLeft, roundDuration, isDrawer, drawerSocketId, players, currentWord } = useGameStore();
+    const { round, totalRounds, hint, timeLeft, roundDuration, isDrawer, drawerSocketId, players, currentWord, mySocketId } = useGameStore();
+
+    const me = players.find(p => p.socketId === mySocketId);
+    const hasGuessed = me?.hasGuessedCorrectly;
 
     const [color, setColor] = useState('#000000');
     const [brushSize, setBrushSize] = useState(6);
@@ -18,6 +22,23 @@ export default function GameScreen() {
     const overlayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const { canvasRef, clearCanvas, handleUndo, handleClear, onPointerDown, onPointerMove, onPointerUp } = useCanvas({ isDrawer, color, brushSize, tool });
+
+    const [guessInput, setGuessInput] = useState('');
+    const [shake, setShake] = useState(false);
+
+    const handleTopGuess = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            const val = guessInput.trim();
+            if (!val) return;
+            socket.emit('chat:guess', { message: val });
+            setGuessInput('');
+
+            // Revert back / Shake effect for feedback
+            setShake(false);
+            setTimeout(() => setShake(true), 10);
+            setTimeout(() => setShake(false), 500);
+        }
+    };
 
     // Show overlay at round start
     useEffect(() => {
@@ -49,7 +70,40 @@ export default function GameScreen() {
                 </div>
 
                 <div className="topbar-center">
-                    <div className="word-display">{hint || '_ _ _ _ _'}</div>
+                    {isDrawer || hasGuessed ? (
+                        <div className={`word-display ${hasGuessed ? 'correct-word' : ''}`}>
+                            {hint || '_ _ _ _ _'}
+                        </div>
+                    ) : (
+                        <label className={`word-display-wrapper ${shake ? 'shake-anim' : ''}`} style={{ position: 'relative', display: 'inline-block', cursor: 'text' }}>
+                            <div className="word-display-input word-display-fake-input">
+                                {(() => {
+                                    if (!hint) return '_ _ _ _ _';
+                                    let result = '';
+                                    let gIdx = 0;
+                                    for (let i = 0; i < hint.length; i++) {
+                                        if (hint[i] !== ' ') {
+                                            result += gIdx < guessInput.length ? guessInput[gIdx] : hint[i];
+                                            gIdx++;
+                                        } else {
+                                            result += ' ';
+                                        }
+                                    }
+                                    return result;
+                                })()}
+                            </div>
+                            <input
+                                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'text' }}
+                                value={guessInput}
+                                onChange={(e) => setGuessInput(e.target.value.replace(/\s/g, ''))}
+                                onKeyDown={handleTopGuess}
+                                maxLength={hint ? hint.replace(/\s/g, '').length : 30}
+                                autoComplete="off"
+                                autoCorrect="off"
+                                spellCheck="false"
+                            />
+                        </label>
+                    )}
                     {isDrawer && <div className="drawing-tag">✏️ You are drawing!</div>}
                 </div>
 

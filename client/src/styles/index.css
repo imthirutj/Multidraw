@@ -634,6 +634,70 @@ select option {
     text-align: center;
 }
 
+.correct-word {
+    background: rgba(67, 233, 123, 0.15) !important;
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+    letter-spacing: 8px;
+    /* Slightly wider to emphasize they solved it */
+}
+
+.word-display-input {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--border);
+    border-radius: 30px;
+    padding: 8px 24px;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 6px;
+    font-family: monospace;
+    min-width: 200px;
+    max-width: 300px;
+    text-align: center;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.word-display-input:focus,
+.word-display-wrapper:focus-within .word-display-fake-input {
+    border-color: var(--primary);
+    background: rgba(124, 92, 252, 0.1);
+}
+
+.word-display-input::placeholder {
+    color: var(--text);
+    /* Make placeholder fully solid to match original look */
+    opacity: 1;
+    /* Standardize across browsers */
+}
+
+.shake-anim {
+    animation: shakeLeftRight 0.4s ease-in-out;
+    border-color: var(--secondary) !important;
+    background: rgba(252, 92, 125, 0.1) !important;
+}
+
+@keyframes shakeLeftRight {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-5px);
+    }
+
+    50% {
+        transform: translateX(5px);
+    }
+
+    75% {
+        transform: translateX(-5px);
+    }
+}
+
 .drawing-tag {
     background: rgba(124, 92, 252, 0.2);
     border: 1px solid rgba(124, 92, 252, 0.5);
