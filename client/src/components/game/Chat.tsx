@@ -18,7 +18,7 @@ export default function Chat() {
 
     const send = () => {
         const val = inputRef.current?.value.trim();
-        if (!val || isDrawer) return;
+        if (!val) return;
 
         if (val.startsWith('http') && val.includes('.gif')) {
             socket.emit('chat:guess', { message: `GIF: ${val}` });
@@ -31,7 +31,6 @@ export default function Chat() {
     };
 
     const sendGif = (url: string) => {
-        if (isDrawer) return;
         socket.emit('chat:guess', { message: `GIF: ${url}` });
         setShowGifMenu(false);
     };
@@ -89,7 +88,7 @@ export default function Chat() {
             </div>
 
             {/* GIF Picker Overlay */}
-            {showGifMenu && !isDrawer && (
+            {showGifMenu && (
                 <div className="gif-picker">
                     <input
                         className="gif-search-input"
@@ -114,20 +113,18 @@ export default function Chat() {
                 <button
                     className="gif-toggle-btn"
                     onClick={() => setShowGifMenu(!showGifMenu)}
-                    disabled={isDrawer}
                 >
                     GIF
                 </button>
                 <input
                     ref={inputRef}
                     type="text"
-                    placeholder={isDrawer ? 'You are drawing!' : 'Type your guess…'}
-                    disabled={isDrawer}
+                    placeholder="Type a message..."
                     maxLength={60}
                     onKeyDown={e => e.key === 'Enter' && send()}
                     autoComplete="off"
                 />
-                <button onClick={send} disabled={isDrawer}>➤</button>
+                <button onClick={send}>➤</button>
             </div>
         </div>
     );

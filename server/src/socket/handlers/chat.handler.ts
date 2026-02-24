@@ -15,7 +15,17 @@ export function registerChatHandlers(io: IoServer, socket: AppSocket, gameServic
         if (!room || room.status !== 'playing') return;
 
         const player = room.players.find(p => p.socketId === socket.id);
-        if (!player || socket.id === room.currentDrawer || player.hasGuessedCorrectly) return;
+        if (!player || player.hasGuessedCorrectly) return;
+
+        // Drawer can chat, but cannot guess the word.
+        if (socket.id === room.currentDrawer) {
+            io.to(roomCode).emit('chat:message', {
+                type: 'chat',
+                username,
+                text: `${username}: ${message}`,
+            });
+            return;
+        }
 
         const guess = message.trim().toLowerCase();
         const answer = room.currentWord.toLowerCase();
