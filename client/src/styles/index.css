@@ -196,24 +196,41 @@ label {
 }
 
 input[type="text"],
+input:not([type]),
 select,
 input[type="range"]+span {
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 11px 14px;
-    color: var(--text);
+    background: rgba(20, 20, 35, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 14px 18px;
+    color: #fff;
     font-family: 'Nunito', sans-serif;
-    font-size: 14px;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    font-size: 15px;
+    font-weight: 600;
+    transition: all 0.3s ease;
     outline: none;
     width: 100%;
 }
 
+input[type="text"]:hover,
+input:not([type]):hover,
+select:hover {
+    border-color: rgba(255, 255, 255, 0.25);
+    background: rgba(30, 30, 45, 0.7);
+}
+
 input[type="text"]:focus,
+input:not([type]):focus,
 select:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(124, 92, 252, 0.15);
+    box-shadow: 0 0 0 4px rgba(124, 92, 252, 0.2);
+    background: rgba(30, 30, 50, 0.8);
+}
+
+input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+    font-weight: 500;
 }
 
 select option {

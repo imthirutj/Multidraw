@@ -21,8 +21,25 @@ export default function LobbyScreen() {
 
     // Rooms list
     const [rooms, setRooms] = useState<RoomListItem[]>([]);
-    const [showRooms, setShowRooms] = useState(false);
     const [error, setError] = useState('');
+
+    React.useEffect(() => {
+        const fetchRooms = async () => {
+            try {
+                const res = await fetch('/api/rooms');
+                if (res.ok) {
+                    const data: RoomListItem[] = await res.json();
+                    setRooms(data);
+                }
+            } catch {
+                console.warn('Could not fetch rooms');
+            }
+        };
+
+        fetchRooms();
+        const interval = setInterval(fetchRooms, 3000); // Auto-refresh every 3s
+        return () => clearInterval(interval);
+    }, []);
 
     const handleCreate = async () => {
         if (!createName.trim()) return setError('Enter your name first');
@@ -50,17 +67,6 @@ export default function LobbyScreen() {
         const avatar = randomAvatar();
         setIdentity(joinName.trim(), avatar);
         socket.emit('room:join', { roomCode: code, username: joinName.trim(), avatar });
-    };
-
-    const handleBrowse = async () => {
-        try {
-            const res = await fetch('/api/rooms');
-            const data: RoomListItem[] = await res.json();
-            setRooms(data);
-            setShowRooms(true);
-        } catch {
-            setError('Could not fetch rooms');
-        }
     };
 
     return (
@@ -126,25 +132,22 @@ export default function LobbyScreen() {
                         </div>
                         <button className="btn btn-secondary" onClick={handleJoin}>Join Room 🎮</button>
 
-                        <div className="divider"><span>or browse</span></div>
-                        <button className="btn btn-ghost" onClick={handleBrowse}>Browse Open Rooms 🔍</button>
+                        <div className="divider"><span>Or browse open rooms</span></div>
 
-                        {showRooms && (
-                            <div className="rooms-list">
-                                {rooms.length === 0 ? (
-                                    <p className="no-rooms">No open rooms found</p>
-                                ) : rooms.map(r => (
-                                    <div key={r.roomCode} className="room-item">
-                                        <div>
-                                            <div className="room-item-name">{r.roomName}</div>
-                                            <div className="room-item-meta">👥 {r.players.length}/{r.maxPlayers} &nbsp;|&nbsp; 🔄 {r.totalRounds} rounds</div>
-                                        </div>
-                                        <span className="room-code-mono">{r.roomCode}</span>
-                                        <button className="room-item-btn" onClick={() => setJoinCode(r.roomCode)}>Select</button>
+                        <div className="rooms-list">
+                            {rooms.length === 0 ? (
+                                <p className="no-rooms">No open rooms found</p>
+                            ) : rooms.map(r => (
+                                <div key={r.roomCode} className="room-item">
+                                    <div>
+                                        <div className="room-item-name">{r.roomName}</div>
+                                        <div className="room-item-meta">👥 {r.players.length}/{r.maxPlayers} &nbsp;|&nbsp; 🔄 {r.totalRounds} rounds</div>
                                     </div>
-                                ))}
-                            </div>
-                        )}
+                                    <span className="room-code-mono">{r.roomCode}</span>
+                                    <button className="room-item-btn" onClick={() => setJoinCode(r.roomCode)}>Select</button>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
