@@ -13,6 +13,11 @@ app.use(express.json());
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/rooms', roomsRouter);
 
+// Health check endpoint for cron jobs (e.g. Keep Alive on Render)
+app.get('/api/health', (_req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // ─── Static (production build) ────────────────────────────────────────────────
 if (!env.isDev) {
     const clientDist = path.resolve(__dirname, '../../client/dist');
