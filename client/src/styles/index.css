@@ -269,7 +269,6 @@ select option {
 .lobby-screen {
     flex-direction: column;
     align-items: center;
-    justify-content: center;
 }
 
 .lobby-container {
@@ -281,6 +280,7 @@ select option {
     padding: 24px;
     width: 100%;
     max-width: 900px;
+    margin: auto;
 }
 
 .logo-area {
@@ -408,8 +408,8 @@ select option {
 
 /* ─── WAITING ─────────────────────────────────────────────────────────────── */
 .waiting-screen {
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
 }
 
 .waiting-container {
@@ -418,6 +418,7 @@ select option {
     width: 100%;
     max-width: 760px;
     padding: 24px;
+    margin: auto;
 }
 
 .waiting-header {
@@ -1060,7 +1061,6 @@ input[type="range"] {
 .gameover-screen {
     flex-direction: column;
     align-items: center;
-    justify-content: center;
 }
 
 .gameover-container {
@@ -1070,6 +1070,7 @@ input[type="range"] {
     padding: 40px 24px;
     max-width: 480px;
     width: 100%;
+    margin: auto;
 }
 
 .trophy-anim {
