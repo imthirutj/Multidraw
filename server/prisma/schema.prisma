@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = "postgresql://postgres:ThiruTeejay56516@db.yaghemdokhoghpuhpvbl.supabase.co:5432/postgres?sslmode=require"
+  provider  = "postgresql"
+  url       = "postgresql://postgres.yaghemdokhoghpuhpvbl:ThiruTeejay56516@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require"
+  directUrl = "postgresql://postgres.yaghemdokhoghpuhpvbl:ThiruTeejay56516@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require"
 }
 
 model GameRoom {
