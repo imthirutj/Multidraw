@@ -18,6 +18,12 @@ if (!env.isDev) {
     const clientDist = path.resolve(__dirname, '../../client/dist');
     app.use(express.static(clientDist));
     app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
+} else {
+    // In development mode, the React app handles the frontend on port 5173.
+    // This just gives a friendly message if someone visits port 3001 directly.
+    app.get('/', (_req, res) => {
+        res.status(200).json({ status: 'active', message: 'MultiDraw API Server is running! Please navigate to the React client (usually http://localhost:5173) to play.' });
+    });
 }
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────
