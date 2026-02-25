@@ -35,7 +35,9 @@ export const RoomRepository = {
     },
 
     async findWaiting(): Promise<GameRoomDoc[]> {
-        const rooms = await prisma.gameRoom.findMany({ where: { status: 'waiting' } });
+        const rooms = await prisma.gameRoom.findMany({
+            where: { status: { in: ['waiting', 'playing'] } }
+        });
         return rooms.map(cast);
     },
 

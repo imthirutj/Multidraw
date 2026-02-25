@@ -6,6 +6,8 @@ import { GameService } from '../../services/game.service';
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
+const hostTransferTimeouts = new Map<string, NodeJS.Timeout>();
+
 export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameService: GameService): void {
 
     socket.on('room:join', async ({ roomCode, username, avatar }) => {
@@ -56,6 +58,83 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         setTimeout(() => gameService.startRound(roomCode), 2_000);
     });
 
+    socket.on('host:request', async () => {
+        const { roomCode, username } = socket.data;
+        if (!roomCode || !username) return;
+
+        const room = await RoomRepository.findByCode(roomCode);
+        if (!room) return;
+        if (room.hostSocketId === socket.id) return; // Host can't request own transfer
+
+        if (hostTransferTimeouts.has(roomCode)) {
+            return socket.emit('error', { message: 'A host transfer request is already pending' });
+        }
+
+        io.to(roomCode).emit('chat:message', { type: 'system', text: `${username} requested to become host. Host has 10 seconds to respond…` });
+        io.to(roomCode).emit('host:requested', { requesterName: username });
+
+        const timeout = setTimeout(async () => {
+            hostTransferTimeouts.delete(roomCode);
+            // Time's up, transfer host to requester
+            const latestRoom = await RoomRepository.findByCode(roomCode);
+            if (!latestRoom) return;
+
+            const newHost = latestRoom.players.find(p => p.socketId === socket.id);
+            if (!newHost) return;
+
+            const otherPlayers = latestRoom.players.filter(p => p.socketId !== socket.id);
+            const updatedPlayers = [newHost, ...otherPlayers]; // New host goes to top
+
+            await RoomRepository.save(roomCode, { players: updatedPlayers, hostSocketId: socket.id });
+            io.to(roomCode).emit('room:host_transferred', { players: updatedPlayers, newHostId: socket.id });
+            io.to(roomCode).emit('chat:message', { type: 'system', text: `${username} is now the host because the previous host did not respond.` });
+        }, 10_000);
+
+        hostTransferTimeouts.set(roomCode, timeout);
+    });
+
+    socket.on('host:respond', () => {
+        const { roomCode, username } = socket.data;
+        if (!roomCode) return;
+
+        if (hostTransferTimeouts.has(roomCode)) {
+            clearTimeout(hostTransferTimeouts.get(roomCode));
+            hostTransferTimeouts.delete(roomCode);
+            io.to(roomCode).emit('chat:message', { type: 'system', text: `Host ${username} is active! Transfer cancelled.` });
+        }
+    });
+
+    socket.on('room:kick', async ({ targetSocketId }) => {
+        const { roomCode } = socket.data;
+        if (!roomCode) return;
+        const room = await RoomRepository.findByCode(roomCode);
+        if (!room || room.hostSocketId !== socket.id) return;
+
+        const targetPlayer = room.players.find(p => p.socketId === targetSocketId);
+        if (!targetPlayer) return;
+
+        // Tell the target client they've been kicked
+        io.to(targetSocketId).emit('room:kicked');
+
+        // Force them to leave the Socket.IO room so they stop receiving broadcasts
+        const targetSocket = io.sockets.sockets.get(targetSocketId);
+        if (targetSocket) {
+            targetSocket.leave(roomCode);
+            targetSocket.data.roomCode = null;
+        }
+
+        const players = room.players.filter(p => p.socketId !== targetSocketId);
+        await RoomRepository.save(roomCode, { players });
+        io.to(roomCode).emit('player:left', { players, username: targetPlayer.username });
+        io.to(roomCode).emit('chat:message', { type: 'system', text: `${targetPlayer.username} was kicked from the room by the host.` });
+
+        if (players.length < 2 && room.status === 'playing') {
+            gameService.clearTimer(roomCode);
+            await RoomRepository.save(roomCode, { status: 'waiting' });
+            io.to(roomCode).emit('game:paused', { message: 'Not enough players. Waiting…' });
+        }
+    });
+
     socket.on('disconnect', async () => {
         const { roomCode, username } = socket.data;
         if (!roomCode || !username) return;
@@ -70,7 +149,7 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
                 : room.hostSocketId;
 
         await RoomRepository.save(roomCode, { players, hostSocketId });
-        io.to(roomCode).emit('player:left', { players, username });
+        io.to(roomCode).emit('player:left', { players, username, newHostId: hostSocketId });
         io.to(roomCode).emit('chat:message', { type: 'system', text: `${username} left the room` });
 
         if (room.status === 'playing' && room.currentDrawer === socket.id) {
@@ -82,6 +161,11 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
             gameService.clearTimer(roomCode);
             await RoomRepository.save(roomCode, { status: 'waiting' });
             io.to(roomCode).emit('game:paused', { message: 'Not enough players. Waiting…' });
+        }
+
+        if (hostTransferTimeouts.has(roomCode)) {
+            clearTimeout(hostTransferTimeouts.get(roomCode));
+            hostTransferTimeouts.delete(roomCode);
         }
     });
 }

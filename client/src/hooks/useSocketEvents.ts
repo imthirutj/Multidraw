@@ -31,9 +31,41 @@ export function useSocketEvents(): void {
             store.addChat({ type: 'system', text: `${username} joined` });
         });
 
-        socket.on('player:left', ({ players, username }) => {
+        socket.on('player:left', ({ players, username, newHostId }) => {
             store.setPlayers(players);
             store.addChat({ type: 'system', text: `${username} left` });
+
+            if (newHostId && newHostId === socket.id && !useGameStore.getState().isHost) {
+                store.setRoom({ isHost: true });
+                store.addChat({ type: 'system', text: 'You are now the room host! 👑' });
+            }
+        });
+
+        socket.on('room:host_transferred', ({ players, newHostId }) => {
+            store.setPlayers(players);
+            if (newHostId === socket.id) {
+                store.setRoom({ isHost: true });
+            } else {
+                store.setRoom({ isHost: false });
+            }
+        });
+
+        socket.on('host:requested', ({ requesterName }) => {
+            store.setRoom({ hostTransferRequestedBy: requesterName });
+
+            // Auto close the notification after 10s if they missed it
+            setTimeout(() => {
+                const currentReq = useGameStore.getState().hostTransferRequestedBy;
+                if (currentReq === requesterName) {
+                    useGameStore.getState().setRoom({ hostTransferRequestedBy: null });
+                }
+            }, 10_000);
+        });
+
+        socket.on('room:kicked', () => {
+            alert('You have been kicked from the room by the host.');
+            useGameStore.getState().reset();
+            window.location.reload(); // Quickest way to fully detach and reset state safely
         });
 
         socket.on('game:starting', () => {

@@ -11,6 +11,7 @@ interface GameState {
     roomCode: string;
     roomName: string;
     isHost: boolean;
+    hostTransferRequestedBy: string | null;
     status: GameStatus;
     players: Player[];
     totalRounds: number;
@@ -51,6 +52,7 @@ const initialState = {
     roomCode: '',
     roomName: '',
     isHost: false,
+    hostTransferRequestedBy: null as string | null,
     status: 'waiting' as GameStatus,
     players: [] as Player[],
     totalRounds: 3,

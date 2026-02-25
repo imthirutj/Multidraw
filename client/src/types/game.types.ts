@@ -47,4 +47,5 @@ export interface RoomListItem {
     players: { username: string }[];
     maxPlayers: number;
     totalRounds: number;
+    status: GameStatus;
 }

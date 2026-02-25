@@ -50,13 +50,20 @@ export interface ClientToServerEvents {
     'draw:undo': (data: DrawUndoPayload) => void;
 
     'chat:guess': (payload: { message: string }) => void;
+
+    'host:request': () => void;
+    'host:respond': () => void;
+    'room:kick': (payload: { targetSocketId: string }) => void;
 }
 
 // ─── Socket Events: Server → Client ──────────────────────────────────────────
 export interface ServerToClientEvents {
     'room:joined': (payload: RoomJoinedPayload) => void;
     'player:joined': (payload: { players: Player[]; username: string }) => void;
-    'player:left': (payload: { players: Player[]; username: string }) => void;
+    'player:left': (payload: { players: Player[]; username: string; newHostId?: string }) => void;
+    'room:host_transferred': (payload: { players: Player[]; newHostId: string }) => void;
+    'host:requested': (payload: { requesterName: string }) => void;
+    'room:kicked': () => void;
 
     'game:starting': () => void;
     'game:over': (payload: { leaderboard: Player[] }) => void;

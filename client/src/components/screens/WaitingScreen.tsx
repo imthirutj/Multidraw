@@ -3,7 +3,26 @@ import socket from '../../config/socket';
 import { useGameStore } from '../../store/game.store';
 
 export default function WaitingScreen() {
-    const { roomCode, roomName, players, isHost, username, totalRounds, roundDuration } = useGameStore();
+    const { roomCode, roomName, players, isHost, username, totalRounds, roundDuration, hostTransferRequestedBy } = useGameStore();
+
+    const [transferCountdown, setTransferCountdown] = React.useState(10);
+    const [playerToKick, setPlayerToKick] = React.useState<{ socketId: string, username: string } | null>(null);
+
+    React.useEffect(() => {
+        if (hostTransferRequestedBy) {
+            setTransferCountdown(10);
+            const interval = setInterval(() => {
+                setTransferCountdown(prev => {
+                    if (prev <= 1) {
+                        clearInterval(interval);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+            return () => clearInterval(interval);
+        }
+    }, [hostTransferRequestedBy]);
 
     const copyCode = () => navigator.clipboard.writeText(roomCode);
 
@@ -33,7 +52,18 @@ export default function WaitingScreen() {
                 <div className="waiting-body glass-card">
                     <div className="players-grid">
                         {players.map(p => (
-                            <div key={p.socketId} className={`player-card-waiting ${p.username === username ? 'me' : ''}`}>
+                            <div key={p.socketId} className={`player-card-waiting ${p.username === username ? 'me' : ''}`} style={{ position: 'relative' }}>
+                                {isHost && p.username !== username && (
+                                    <button
+                                        onClick={() => {
+                                            setPlayerToKick({ socketId: p.socketId, username: p.username });
+                                        }}
+                                        style={{ position: 'absolute', top: '-8px', right: '-8px', background: 'var(--secondary)', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                        title="Kick player"
+                                    >
+                                        ×
+                                    </button>
+                                )}
                                 <div className="avatar">{p.avatar || '🎨'}</div>
                                 <div className="pname">{p.username}</div>
                                 {p.socketId === players[0]?.socketId && <div className="host-tag">👑 Host</div>}
@@ -42,6 +72,29 @@ export default function WaitingScreen() {
                     </div>
 
                     <div className="waiting-actions">
+                        {hostTransferRequestedBy && isHost && (
+                            <div className="error-banner" style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', alignItems: 'center' }}>
+                                <strong>⚠️ {hostTransferRequestedBy} requested to become host!</strong>
+                                <span>Click below within {transferCountdown} seconds to keep your host status.</span>
+                                <button
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => {
+                                        socket.emit('host:respond');
+                                        useGameStore.getState().setRoom({ hostTransferRequestedBy: null });
+                                    }}
+                                >
+                                    I am active! (Keep Host)
+                                </button>
+                            </div>
+                        )}
+
+                        {hostTransferRequestedBy && !isHost && (
+                            <div className="error-banner" style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', alignItems: 'center', backgroundColor: 'rgba(249, 200, 70, 0.1)', borderColor: 'rgba(249, 200, 70, 0.3)', color: 'var(--text)' }}>
+                                <strong>⏳ {hostTransferRequestedBy} requested to become host!</strong>
+                                <span>Ownership will be transferred in {transferCountdown} seconds if the host does not respond.</span>
+                            </div>
+                        )}
+
                         <div className="waiting-tip">
                             <span className="tip-icon">💡</span>
                             <p>
@@ -57,6 +110,11 @@ export default function WaitingScreen() {
                                 Start Game 🚀
                             </button>
                         )}
+                        {!isHost && !hostTransferRequestedBy && (
+                            <button className="btn btn-ghost" onClick={() => socket.emit('host:request')}>
+                                Request Host Transfer 👑
+                            </button>
+                        )}
                     </div>
 
                     <div className="game-settings-display">
@@ -66,6 +124,30 @@ export default function WaitingScreen() {
                     </div>
                 </div>
             </div>
+
+            {/* Kick Modal */}
+            {playerToKick && (
+                <div className="modal-overlay" onClick={() => setPlayerToKick(null)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <h3>Kick Player?</h3>
+                        <p>Are you sure you want to kick <strong>{playerToKick.username}</strong> from the room?</p>
+                        <div className="modal-actions">
+                            <button className="btn btn-ghost" onClick={() => setPlayerToKick(null)}>
+                                Cancel
+                            </button>
+                            <button
+                                className="btn btn-danger"
+                                onClick={() => {
+                                    socket.emit('room:kick', { targetSocketId: playerToKick.socketId });
+                                    setPlayerToKick(null);
+                                }}
+                            >
+                                Yes, Kick Them
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

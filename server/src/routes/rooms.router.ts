@@ -30,6 +30,7 @@ router.get('/', async (_req, res: Response) => {
             players: r.players,
             maxPlayers: r.maxPlayers,
             totalRounds: r.totalRounds,
+            status: r.status,
         })));
     } catch (err) {
         res.status(500).json({ error: err instanceof Error ? err.message : 'Server error' });

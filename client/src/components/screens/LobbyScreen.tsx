@@ -117,7 +117,14 @@ export default function LobbyScreen() {
                         ) : rooms.map(r => (
                             <div key={r.roomCode} className="room-item">
                                 <div>
-                                    <div className="room-item-name">{r.roomName}</div>
+                                    <div className="room-item-name">
+                                        {r.roomName}
+                                        {r.status === 'playing' && (
+                                            <span style={{ marginLeft: '8px', fontSize: '0.7rem', backgroundColor: 'var(--primary)', color: '#fff', padding: '2px 6px', borderRadius: '4px', verticalAlign: 'middle' }}>
+                                                ▶ Playing
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="room-item-meta">👥 {r.players.length}/{r.maxPlayers} &nbsp;|&nbsp; 🔄 {r.totalRounds} rounds</div>
                                 </div>
                                 <span className="room-code-mono">{r.roomCode}</span>

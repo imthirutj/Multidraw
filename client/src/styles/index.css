@@ -138,6 +138,17 @@ body,
     transform: translateY(-2px);
 }
 
+.btn-danger {
+    background: linear-gradient(135deg, #ff4b4b, #ff0000);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(255, 75, 75, 0.4);
+}
+
+.btn-danger:hover {
+    box-shadow: 0 6px 30px rgba(255, 75, 75, 0.6);
+    transform: translateY(-2px);
+}
+
 .btn-secondary {
     background: linear-gradient(135deg, #fc5c7d, #ff8c72);
     color: #fff;
@@ -266,6 +277,48 @@ select option {
     font-size: 13px;
     color: var(--secondary);
     text-align: center;
+}
+
+/* ─── MODAL ───────────────────────────────────────────────────────────────── */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modal-content {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 30px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: var(--shadow);
+    text-align: center;
+    animation: popIn 0.3s ease;
+}
+
+.modal-content h3 {
+    font-size: 20px;
+    margin-bottom: 10px;
+    color: var(--text);
+}
+
+.modal-content p {
+    color: var(--text-muted);
+    margin-bottom: 24px;
+    font-size: 15px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
 }
 
 /* ─── LOBBY ───────────────────────────────────────────────────────────────── */
