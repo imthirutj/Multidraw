@@ -54,6 +54,8 @@ export interface ClientToServerEvents {
     'host:request': () => void;
     'host:respond': () => void;
     'room:kick': (payload: { targetSocketId: string }) => void;
+    'room:delete': () => void;
+    'canvas:respond': (payload: { dataURL: string; toSocketId: string }) => void;
 }
 
 // ─── Socket Events: Server → Client ──────────────────────────────────────────
@@ -85,6 +87,9 @@ export interface ServerToClientEvents {
     'draw:clear': () => void;
     'draw:fill': (data: DrawFillPayload) => void;
     'draw:undo': (data: DrawUndoPayload) => void;
+
+    'canvas:request': (payload: { requesterSocketId: string }) => void;
+    'canvas:sync': (payload: { dataURL: string }) => void;
 
     error: (payload: { message: string }) => void;
 }

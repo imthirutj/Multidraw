@@ -43,6 +43,30 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
 
         socket.to(roomCode).emit('player:joined', { players, username });
         io.to(roomCode).emit('chat:message', { type: 'system', text: `${username} joined the room` });
+
+        // If joining mid-game, explicitly sync them into the current round instantly
+        if (room.status === 'playing') {
+            socket.emit('game:starting');
+            const timeLeft = gameService.getTimeLeft(roomCode) || room.roundDuration;
+            const revealed = gameService.getRevealedCount(roomCode);
+            const drawerDetails = players.find(p => p.socketId === room.currentDrawer);
+
+            import('../../utils/words').then(({ getRevealedHint }) => {
+                socket.emit('round:start', {
+                    round: room.currentRound,
+                    totalRounds: room.totalRounds,
+                    drawerSocketId: room.currentDrawer,
+                    drawerName: drawerDetails?.username || 'Unknown',
+                    hint: room.currentWord ? getRevealedHint(room.currentWord, revealed) : '',
+                    timeLeft
+                });
+            });
+
+            // Request full canvas sync from the current drawer
+            if (room.currentDrawer) {
+                io.to(room.currentDrawer).emit('canvas:request', { requesterSocketId: socket.id });
+            }
+        }
     });
 
     socket.on('game:start', async () => {
@@ -128,11 +152,42 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         io.to(roomCode).emit('player:left', { players, username: targetPlayer.username });
         io.to(roomCode).emit('chat:message', { type: 'system', text: `${targetPlayer.username} was kicked from the room by the host.` });
 
-        if (players.length < 2 && room.status === 'playing') {
-            gameService.clearTimer(roomCode);
-            await RoomRepository.save(roomCode, { status: 'waiting' });
-            io.to(roomCode).emit('game:paused', { message: 'Not enough players. Waiting…' });
+        // If this leaves only the drawer, or everyone else has guessed, we could end round.
+        // But simply letting the drawer keep drawing (free draw) until someone joins is better UX!
+        if (room.status === 'playing' && room.currentDrawer !== targetSocketId) {
+            const nonDrawers = players.filter(p => p.socketId !== room.currentDrawer);
+            if (nonDrawers.length > 0 && nonDrawers.every(p => p.hasGuessedCorrectly)) {
+                setTimeout(() => gameService.endRound(roomCode), 1500);
+            }
         }
+    });
+
+    socket.on('room:delete', async () => {
+        const { roomCode } = socket.data;
+        if (!roomCode) return;
+        const room = await RoomRepository.findByCode(roomCode);
+        if (!room || room.hostSocketId !== socket.id) return;
+
+        // Ensure we stop the game timer
+        gameService.clearTimer(roomCode);
+
+        // Notify everyone that the room is gone
+        io.to(roomCode).emit('error', { message: 'The host has deleted the room.' });
+
+        // Disconnect all sockets from the Socket.IO room
+        const clients = io.sockets.adapter.rooms.get(roomCode);
+        if (clients) {
+            for (const clientId of clients) {
+                const clientSocket = io.sockets.sockets.get(clientId);
+                if (clientSocket) {
+                    clientSocket.leave(roomCode);
+                    clientSocket.data.roomCode = null;
+                }
+            }
+        }
+
+        // We can just wipe its data from the repository
+        await RoomRepository.delete(roomCode);
     });
 
     socket.on('disconnect', async () => {
@@ -157,10 +212,11 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
             setTimeout(() => gameService.endRound(roomCode), 1_500);
         }
 
-        if (players.length < 2 && room.status === 'playing') {
-            gameService.clearTimer(roomCode);
-            await RoomRepository.save(roomCode, { status: 'waiting' });
-            io.to(roomCode).emit('game:paused', { message: 'Not enough players. Waiting…' });
+        if (room.status === 'playing' && room.currentDrawer !== socket.id) {
+            const nonDrawers = players.filter(p => p.socketId !== room.currentDrawer);
+            if (nonDrawers.length > 0 && nonDrawers.every(p => p.hasGuessedCorrectly)) {
+                setTimeout(() => gameService.endRound(roomCode), 1500);
+            }
         }
 
         if (hostTransferTimeouts.has(roomCode)) {

@@ -9,6 +9,7 @@ type IoServer = Server<ClientToServerEvents, ServerToClientEvents>;
 interface RoomTimer {
     interval: ReturnType<typeof setInterval>;
     timeLeft: number;
+    revealed: number;
 }
 
 export class GameService {
@@ -18,7 +19,7 @@ export class GameService {
 
     async startRound(roomCode: string): Promise<void> {
         const room = await RoomRepository.findByCode(roomCode);
-        if (!room || room.players.length < 2) return;
+        if (!room || room.players.length === 0) return;
 
         const drawerIndex = room.currentRound % room.players.length;
         const drawer = room.players[drawerIndex];
@@ -133,6 +134,14 @@ export class GameService {
         if (t) { clearInterval(t.interval); this.roomTimers.delete(roomCode); }
     }
 
+    getTimeLeft(roomCode: string): number | null {
+        return this.roomTimers.get(roomCode)?.timeLeft ?? null;
+    }
+
+    getRevealedCount(roomCode: string): number {
+        return this.roomTimers.get(roomCode)?.revealed ?? 0;
+    }
+
     private startTimer(roomCode: string, duration: number, word: string): void {
         this.clearTimer(roomCode);
         let remaining = duration;
@@ -141,18 +150,20 @@ export class GameService {
         const interval = setInterval(async () => {
             remaining--;
             const timer = this.roomTimers.get(roomCode);
-            if (timer) timer.timeLeft = remaining;
+            if (timer) {
+                timer.timeLeft = remaining;
+                if (remaining % 20 === 0 && remaining > 0) timer.revealed++;
+            }
 
             this.io.to(roomCode).emit('timer:tick', { timeLeft: remaining });
 
             if (remaining % 20 === 0 && remaining > 0) {
-                revealed++;
-                this.io.to(roomCode).emit('hint:reveal', { hint: getRevealedHint(word, revealed) });
+                this.io.to(roomCode).emit('hint:reveal', { hint: getRevealedHint(word, timer ? timer.revealed : 0) });
             }
 
             if (remaining <= 0) await this.endRound(roomCode);
         }, 1_000);
 
-        this.roomTimers.set(roomCode, { interval, timeLeft: duration });
+        this.roomTimers.set(roomCode, { interval, timeLeft: duration, revealed: 0 });
     }
 }

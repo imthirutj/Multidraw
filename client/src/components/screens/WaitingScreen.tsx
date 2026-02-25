@@ -7,6 +7,7 @@ export default function WaitingScreen() {
 
     const [transferCountdown, setTransferCountdown] = React.useState(10);
     const [playerToKick, setPlayerToKick] = React.useState<{ socketId: string, username: string } | null>(null);
+    const [isDeletingRoom, setIsDeletingRoom] = React.useState(false);
 
     React.useEffect(() => {
         if (hostTransferRequestedBy) {
@@ -46,7 +47,14 @@ export default function WaitingScreen() {
                             <button onClick={copyCode} title="Copy">📋</button>
                         </div>
                     </div>
-                    <button className="btn btn-ghost-sm" onClick={() => window.location.reload()}>Leave</button>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        {isHost && (
+                            <button className="btn btn-ghost-sm" style={{ color: '#ff4b4b', borderColor: 'rgba(255, 75, 75, 0.3)' }} onClick={() => setIsDeletingRoom(true)}>
+                                Delete Room
+                            </button>
+                        )}
+                        <button className="btn btn-ghost-sm" onClick={() => window.location.reload()}>Leave</button>
+                    </div>
                 </div>
 
                 <div className="waiting-body glass-card">
@@ -143,6 +151,30 @@ export default function WaitingScreen() {
                                 }}
                             >
                                 Yes, Kick Them
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Room Modal */}
+            {isDeletingRoom && (
+                <div className="modal-overlay" onClick={() => setIsDeletingRoom(false)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <h3>Delete Room?</h3>
+                        <p>Are you sure you want to permanently delete this room? Everyone will be kicked out.</p>
+                        <div className="modal-actions">
+                            <button className="btn btn-ghost" onClick={() => setIsDeletingRoom(false)}>
+                                Cancel
+                            </button>
+                            <button
+                                className="btn btn-danger"
+                                onClick={() => {
+                                    socket.emit('room:delete');
+                                    setIsDeletingRoom(false);
+                                }}
+                            >
+                                Yes, Delete It
                             </button>
                         </div>
                     </div>

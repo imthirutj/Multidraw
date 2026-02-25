@@ -196,14 +196,24 @@ export function useCanvas({ isDrawer, color, brushSize, tool }: UseCanvasProps) 
         socket.on('draw:fill', ({ x, y, color: c }) => floodFill(x, y, c));
         socket.on('draw:undo', ({ dataURL }) => applyUndo(dataURL));
 
+        socket.on('canvas:request', ({ requesterSocketId }) => {
+            if (!isDrawer || !canvasRef.current) return;
+            const dataURL = canvasRef.current.toDataURL();
+            socket.emit('canvas:respond', { dataURL, toSocketId: requesterSocketId });
+        });
+
+        socket.on('canvas:sync', ({ dataURL }) => applyUndo(dataURL));
+
         return () => {
             socket.off('draw:start');
             socket.off('draw:move');
             socket.off('draw:clear');
             socket.off('draw:fill');
             socket.off('draw:undo');
+            socket.off('canvas:request');
+            socket.off('canvas:sync');
         };
-    }, [clearCanvas, floodFill, applyUndo]);
+    }, [clearCanvas, floodFill, applyUndo, isDrawer]);
 
     return {
         canvasRef,

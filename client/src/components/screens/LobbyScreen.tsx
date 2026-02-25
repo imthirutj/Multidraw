@@ -29,6 +29,7 @@ export default function LobbyScreen() {
                 const res = await fetch('/api/rooms');
                 if (res.ok) {
                     const data: RoomListItem[] = await res.json();
+                    data.sort((a, b) => b.players.length - a.players.length);
                     setRooms(data);
                 }
             } catch {

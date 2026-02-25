@@ -23,7 +23,7 @@ export function useSocketEvents(): void {
                 roundDuration: payload.roundDuration,
                 timeLeft: payload.roundDuration,
             });
-            store.setScreen('waiting');
+            store.setScreen(payload.status === 'playing' ? 'game' : 'waiting');
         });
 
         socket.on('player:joined', ({ players, username }) => {
@@ -116,9 +116,9 @@ export function useSocketEvents(): void {
             store.addChat({ type: 'system', text: message })
         );
 
-        socket.on('error', ({ message }) =>
-            store.addChat({ type: 'system', text: `⚠️ ${message}` })
-        );
+        socket.on('error', ({ message }) => {
+            store.addChat({ type: 'system', text: `⚠️ ${message}` });
+        });
 
         return () => {
             socket.removeAllListeners();

@@ -15,4 +15,5 @@ export function registerDrawHandlers(socket: AppSocket): void {
     socket.on('draw:clear', () => relay('draw:clear'));
     socket.on('draw:fill', data => relay('draw:fill', data));
     socket.on('draw:undo', data => relay('draw:undo', data));
+    socket.on('canvas:respond', data => socket.to(data.toSocketId).emit('canvas:sync', { dataURL: data.dataURL }));
 }

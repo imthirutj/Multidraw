@@ -3,21 +3,63 @@ export const WORD_LIST: string[] = [
     'elephant', 'giraffe', 'penguin', 'dolphin', 'kangaroo', 'octopus', 'butterfly', 'crocodile',
     'flamingo', 'cheetah', 'gorilla', 'hedgehog', 'jellyfish', 'koala', 'lobster', 'peacock',
     'rhinoceros', 'scorpion', 'toucan', 'walrus', 'zebra', 'parrot', 'squirrel', 'raccoon',
+    'lion', 'tiger', 'bear', 'wolf', 'fox', 'deer', 'rabbit', 'frog', 'toad', 'snake', 'lizard',
+    'turtle', 'shark', 'whale', 'seal', 'crab', 'bat', 'owl', 'eagle', 'hawk', 'pigeon', 'ostrich',
+    'horse', 'cow', 'pig', 'sheep', 'goat', 'chicken', 'duck', 'goose', 'turkey', 'mouse', 'rat',
+    'beaver', 'skunk', 'platypus', 'hippopotamus', 'sloth', 'anteater', 'armadillo', 'camel', 'llama',
+    'alpaca', 'wombat', 'lemur', 'monkey', 'chimpanzee', 'orangutan', 'baboon', 'snail', 'worm', 'spider',
+
     // Food
     'pizza', 'hamburger', 'spaghetti', 'sushi', 'taco', 'pancake', 'donut', 'cupcake',
     'watermelon', 'pineapple', 'strawberry', 'avocado', 'broccoli', 'popcorn', 'chocolate',
-    'sandwich', 'ice cream', 'hot dog', 'pretzel', 'waffle',
+    'sandwich', 'ice cream', 'hot dog', 'pretzel', 'waffle', 'apple', 'banana', 'orange',
+    'grape', 'lemon', 'lime', 'cherry', 'peach', 'pear', 'plum', 'mango', 'kiwi', 'coconut',
+    'pumpkin', 'carrot', 'potato', 'tomato', 'onion', 'garlic', 'pepper', 'mushroom', 'corn',
+    'peas', 'beans', 'lettuce', 'cabbage', 'spinach', 'cheese', 'bread', 'cake', 'cookie',
+    'pie', 'candy', 'bacon', 'sausage', 'steak', 'chicken', 'fish', 'shrimp', 'pudding', 'soup',
+
     // Objects
     'umbrella', 'telescope', 'microphone', 'calculator', 'backpack', 'lantern', 'compass',
     'binoculars', 'anchor', 'trophy', 'crown', 'diamond', 'rocket', 'submarine', 'helicopter',
-    'lighthouse', 'snowflake', 'rainbow', 'volcano', 'tornado',
+    'lighthouse', 'snowflake', 'rainbow', 'volcano', 'tornado', 'chair', 'table', 'bed', 'sofa',
+    'lamp', 'television', 'computer', 'keyboard', 'mouse', 'phone', 'clock', 'watch', 'camera',
+    'book', 'notebook', 'pen', 'pencil', 'eraser', 'scissors', 'glue', 'tape', 'paper', 'ruler',
+    'globe', 'map', 'key', 'lock', 'door', 'window', 'wall', 'roof', 'floor', 'stairs', 'ladder',
+    'bridge', 'fence', 'gate', 'road', 'street', 'path', 'trail', 'suitcase', 'glasses', 'mirror',
+
+    // Nature / Environment
+    'mountain', 'hill', 'valley', 'river', 'lake', 'ocean', 'sea', 'beach', 'island', 'forest',
+    'jungle', 'desert', 'cave', 'star', 'moon', 'sun', 'cloud', 'rain', 'snow', 'wind', 'storm',
+    'lightning', 'thunder', 'tree', 'flower', 'grass', 'leaf', 'rock', 'sand', 'dirt', 'mud',
+
     // Actions
     'swimming', 'dancing', 'flying', 'sleeping', 'climbing', 'jumping', 'fishing', 'bowling',
-    'surfing', 'skiing', 'painting', 'cooking', 'gardening', 'reading', 'cycling',
+    'surfing', 'skiing', 'painting', 'cooking', 'gardening', 'reading', 'cycling', 'running',
+    'walking', 'crawling', 'singing', 'playing', 'writing', 'drawing', 'eating', 'drinking',
+    'laughing', 'crying', 'smiling', 'frowning', 'shouting', 'whispering', 'listening', 'watching',
+
     // Places
     'castle', 'pyramid', 'igloo', 'treehouse', 'windmill', 'stadium', 'aquarium', 'museum',
+    'school', 'hospital', 'library', 'bank', 'police station', 'fire station', 'post office',
+    'restaurant', 'cafe', 'bakery', 'supermarket', 'mall', 'cinema', 'theater', 'park', 'playground',
+    'zoo', 'farm', 'factory', 'airport', 'train station', 'bus station', 'gas station', 'hotel',
+
     // Fantasy
-    'ghost', 'robot', 'wizard', 'mermaid', 'dragon', 'unicorn', 'superhero', 'ninja',
+    'ghost', 'robot', 'wizard', 'mermaid', 'dragon', 'unicorn', 'superhero', 'ninja', 'zombie',
+    'vampire', 'werewolf', 'alien', 'monster', 'fairy', 'elf', 'goblin', 'troll', 'witch', 'king',
+    'queen', 'prince', 'princess', 'knight', 'pirate', 'cyclops', 'centaur', 'pegasus', 'phoenix',
+
+    // Vehicles
+    'car', 'bus', 'truck', 'van', 'taxi', 'police car', 'ambulance', 'fire engine', 'motorcycle',
+    'bicycle', 'scooter', 'skateboard', 'rollerblades', 'train', 'subway', 'tram', 'airplane',
+    'jet', 'glider', 'hot air balloon', 'blimp', 'boat', 'ship', 'sailboat', 'yacht', 'canoe', 'kayak',
+
+    // Body Parts & Clothing
+    'head', 'hair', 'face', 'eye', 'ear', 'nose', 'mouth', 'tooth', 'tongue', 'lip', 'neck',
+    'shoulder', 'arm', 'elbow', 'wrist', 'hand', 'finger', 'thumb', 'chest', 'stomach', 'back',
+    'leg', 'knee', 'ankle', 'foot', 'toe', 'heel', 'shirt', 'pants', 'jeans', 'shorts', 'dress',
+    'skirt', 'sweater', 'jacket', 'coat', 'sock', 'shoe', 'boot', 'sandal', 'slipper', 'hat',
+    'cap', 'glove', 'mitten', 'scarf', 'tie', 'belt', 'ring', 'necklace', 'bracelet', 'earring'
 ];
 
 export function getRandomWord(): string {

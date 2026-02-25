@@ -40,6 +40,8 @@ export interface DrawStartPayload { x: number; y: number; color: string; size: n
 export interface DrawMovePayload { x1: number; y1: number; x2: number; y2: number; color: string; size: number; }
 export interface DrawFillPayload { x: number; y: number; color: string; }
 export interface DrawUndoPayload { dataURL: string; }
+export interface CanvasRespondPayload { dataURL: string; toSocketId: string; }
+export interface CanvasSyncPayload { dataURL: string; }
 
 export interface RoomListItem {
     roomCode: string;
