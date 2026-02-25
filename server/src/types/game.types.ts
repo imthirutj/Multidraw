@@ -56,6 +56,7 @@ export interface ClientToServerEvents {
     'host:respond': () => void;
     'room:kick': (payload: { targetSocketId: string }) => void;
     'room:delete': () => void;
+    'canvas:respond': (payload: { dataURL: string; toSocketId: string }) => void;
     'td:choose': (payload: { choice: 'truth' | 'dare' }) => void;
     'td:next_turn': () => void;
 
