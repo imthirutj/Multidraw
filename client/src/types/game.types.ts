@@ -14,6 +14,7 @@ export interface Player {
 export interface RoomJoinedPayload {
     roomCode: string;
     roomName: string;
+    gameType: string;
     players: Player[];
     isHost: boolean;
     status: GameStatus;
@@ -46,6 +47,7 @@ export interface CanvasSyncPayload { dataURL: string; }
 export interface RoomListItem {
     roomCode: string;
     roomName: string;
+    gameType: string;
     players: { username: string }[];
     maxPlayers: number;
     totalRounds: number;

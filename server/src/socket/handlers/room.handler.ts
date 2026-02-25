@@ -17,13 +17,29 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         if (room.status === 'finished') return socket.emit('error', { message: 'Game already finished' });
 
         const isHost = room.players.length === 0;
+
+        const oldPlayer = room.players.find(p => p.username === username);
+        const wasDrawer = oldPlayer && room.currentDrawer === oldPlayer.socketId;
+
         const players = [
             ...room.players.filter(p => p.username !== username),
-            { socketId: socket.id, username, avatar: avatar || '', score: 0, hasGuessedCorrectly: false },
+            {
+                socketId: socket.id,
+                username,
+                avatar: avatar || '',
+                score: oldPlayer?.score || 0,
+                hasGuessedCorrectly: oldPlayer?.hasGuessedCorrectly || false
+            },
         ];
+
+        let updatedCurrentDrawer = room.currentDrawer;
+        if (wasDrawer) {
+            updatedCurrentDrawer = socket.id;
+        }
 
         await RoomRepository.save(roomCode, {
             players,
+            currentDrawer: updatedCurrentDrawer,
             ...(isHost ? { hostSocketId: socket.id } : {}),
         });
 
@@ -34,6 +50,7 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         socket.emit('room:joined', {
             roomCode,
             roomName: room.roomName,
+            gameType: room.gameType,
             players,
             isHost,
             status: room.status,
@@ -49,13 +66,13 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
             socket.emit('game:starting');
             const timeLeft = gameService.getTimeLeft(roomCode) || room.roundDuration;
             const revealed = gameService.getRevealedCount(roomCode);
-            const drawerDetails = players.find(p => p.socketId === room.currentDrawer);
+            const drawerDetails = players.find(p => p.socketId === updatedCurrentDrawer);
 
             import('../../utils/words').then(({ getRevealedHint }) => {
                 socket.emit('round:start', {
                     round: room.currentRound,
                     totalRounds: room.totalRounds,
-                    drawerSocketId: room.currentDrawer,
+                    drawerSocketId: updatedCurrentDrawer,
                     drawerName: drawerDetails?.username || 'Unknown',
                     hint: room.currentWord ? getRevealedHint(room.currentWord, revealed) : '',
                     timeLeft
@@ -63,8 +80,8 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
             });
 
             // Request full canvas sync from the current drawer
-            if (room.currentDrawer) {
-                io.to(room.currentDrawer).emit('canvas:request', { requesterSocketId: socket.id });
+            if (updatedCurrentDrawer) {
+                io.to(updatedCurrentDrawer).emit('canvas:request', { requesterSocketId: socket.id });
             }
         }
     });
@@ -160,6 +177,43 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
                 setTimeout(() => gameService.endRound(roomCode), 1500);
             }
         }
+    });
+
+    socket.on('td:choose', async ({ choice }) => {
+        const { roomCode } = socket.data;
+        if (!roomCode) return;
+        const room = await RoomRepository.findByCode(roomCode);
+        if (!room || room.status !== 'playing' || room.currentDrawer !== socket.id) return;
+
+        import('../../utils/words').then(({ getRandomTruth, getRandomDare }) => {
+            const prompt = choice === 'truth' ? getRandomTruth() : getRandomDare();
+            const playerName = room.players.find(p => p.socketId === socket.id)?.username || 'Someone';
+            io.to(roomCode).emit('td:chosen', { choice, prompt });
+            io.to(roomCode).emit('chat:message', { type: 'system', text: `${playerName} chose ${choice.toUpperCase()}! 🎭` });
+        });
+    });
+
+    socket.on('td:next_turn', async () => {
+        const { roomCode } = socket.data;
+        if (!roomCode) return;
+        const room = await RoomRepository.findByCode(roomCode);
+        if (!room || room.status !== 'playing') return;
+
+        // Only host or the current active player can move to the next turn
+        if (room.currentDrawer !== socket.id && room.hostSocketId !== socket.id) return;
+
+        io.to(roomCode).emit('chat:message', { type: 'system', text: `Moving to next player...` });
+        gameService.endRound(roomCode);
+    });
+
+    socket.on('webrtc:join', () => {
+        const { roomCode } = socket.data;
+        if (!roomCode) return;
+        socket.to(roomCode).emit('webrtc:user_joined', { socketId: socket.id });
+    });
+
+    socket.on('webrtc:signal', ({ to, type, data }) => {
+        io.to(to).emit('webrtc:signal', { from: socket.id, type, data });
     });
 
     socket.on('room:delete', async () => {

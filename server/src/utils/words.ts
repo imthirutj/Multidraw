@@ -89,3 +89,47 @@ export function getRevealedHint(word: string, revealCount: number): string {
         })
         .join(' ');
 }
+
+export const TRUTH_LIST: string[] = [
+    "What is your biggest fear in life?",
+    "If you could be invisible for a day, what's the first thing you would do?",
+    "What is the most embarrassing thing you've ever done?",
+    "Have you ever lied to get out of a bad date or hangout?",
+    "What's the worst trouble you got into as a kid?",
+    "If you had to trade lives with someone in this room, who would it be?",
+    "What's a secret you've never told anyone here?",
+    "What is your most bizarre habit?",
+    "Who was your first celebrity crush?",
+    "What is the most awkward text you've ever accidentally sent?",
+    "Have you ever eaten food that fell on the floor?",
+    "What's the weirdest dream you've ever had?",
+    "If you could perfectly pull off any crime, what would it be?",
+    "What is your most embarrassing guilty pleasure?",
+    "Have you ever accidentally eavesdropped on a juicy conversation?"
+];
+
+export const DARE_LIST: string[] = [
+    "Do 10 pushups right now.",
+    "Show the last photo you took on your phone to the camera.",
+    "Speak in a weird accent until your next turn.",
+    "Try to lick your elbow.",
+    "Let someone else in the room (or the host) give you a silly nickname you must use.",
+    "Sing the chorus of your favorite song out loud.",
+    "Do your best impression of another player in the room.",
+    "Balance a spoon (or object) on your nose for 10 seconds.",
+    "Type a message using only your nose in the chat.",
+    "Close your eyes and try to guess what someone is holding up to the camera.",
+    "Do a dramatic reading of the last text message you received.",
+    "Dance with no music for 15 seconds.",
+    "Make up a poem about the person who went before you.",
+    "Draw a funny face on your hand or arm.",
+    "Act like a monkey until someone can guess what you are doing (without saying it)."
+];
+
+export function getRandomTruth(): string {
+    return TRUTH_LIST[Math.floor(Math.random() * TRUTH_LIST.length)];
+}
+
+export function getRandomDare(): string {
+    return DARE_LIST[Math.floor(Math.random() * DARE_LIST.length)];
+}

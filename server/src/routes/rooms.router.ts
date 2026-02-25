@@ -7,10 +7,11 @@ const router = Router();
 
 router.post('/', async (req: Request<{}, {}, CreateRoomBody>, res: Response) => {
     try {
-        const { roomName, totalRounds, roundDuration, maxPlayers } = req.body;
+        const { roomName, gameType, totalRounds, roundDuration, maxPlayers } = req.body;
         const room = await RoomRepository.create({
             roomCode: generateRoomCode(),
             roomName: roomName || 'Drawing Room',
+            gameType: gameType || 'drawing',
             totalRounds: totalRounds || 3,
             roundDuration: roundDuration || 80,
             maxPlayers: maxPlayers || 8,
@@ -27,6 +28,7 @@ router.get('/', async (_req, res: Response) => {
         res.json(rooms.map(r => ({
             roomCode: r.roomCode,
             roomName: r.roomName,
+            gameType: r.gameType,
             players: r.players,
             maxPlayers: r.maxPlayers,
             totalRounds: r.totalRounds,

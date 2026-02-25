@@ -12,6 +12,7 @@ model GameRoom {
   id             String   @id @default(cuid())
   roomCode       String   @unique
   roomName       String   @default("Drawing Room")
+  gameType       String   @default("drawing")
   players        Json     @default("[]")
   status         String   @default("waiting")
   currentRound   Int      @default(0)

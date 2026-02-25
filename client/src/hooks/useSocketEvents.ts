@@ -16,6 +16,7 @@ export function useSocketEvents(): void {
             store.setRoom({
                 roomCode: payload.roomCode,
                 roomName: payload.roomName,
+                gameType: payload.gameType,
                 players: payload.players,
                 isHost: payload.isHost,
                 status: payload.status,
@@ -78,11 +79,13 @@ export function useSocketEvents(): void {
                 round: payload.round,
                 totalRounds: payload.totalRounds,
                 drawerSocketId: payload.drawerSocketId,
+                drawerName: payload.drawerName,
                 isDrawer: payload.drawerSocketId === socket.id,
                 hint: payload.hint,
                 timeLeft: payload.timeLeft,
                 roundDuration: payload.timeLeft,
                 currentWord: '',
+                tdChoice: null,
             });
             store.setPlayers(
                 useGameStore.getState().players.map(p => ({ ...p, hasGuessedCorrectly: false }))
@@ -116,6 +119,10 @@ export function useSocketEvents(): void {
             store.addChat({ type: 'system', text: message })
         );
 
+        socket.on('td:chosen', ({ choice, prompt }) => {
+            store.setTdChoice({ choice, prompt });
+        });
+
         socket.on('error', ({ message }) => {
             store.addChat({ type: 'system', text: `⚠️ ${message}` });
         });
@@ -123,6 +130,7 @@ export function useSocketEvents(): void {
         return () => {
             socket.removeAllListeners();
         };
+
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 }

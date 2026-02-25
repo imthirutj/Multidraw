@@ -13,6 +13,7 @@ export default function LobbyScreen() {
 
     // Create form
     const [roomName, setRoomName] = useState('');
+    const [gameType, setGameType] = useState('drawing');
     const [totalRounds, setTotalRounds] = useState<number | string>(3);
     const [roundDuration, setRoundDuration] = useState<number | string>(1.5);
 
@@ -56,8 +57,9 @@ export default function LobbyScreen() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     roomName: roomName || 'Drawing Room',
-                    totalRounds: Number(totalRounds) || 3,
-                    roundDuration: Math.round((Number(roundDuration) || 1.5) * 60)
+                    gameType,
+                    totalRounds: gameType === 'truth_or_dare' ? 20 : (Number(totalRounds) || 3),
+                    roundDuration: gameType === 'truth_or_dare' ? 300 : Math.round((Number(roundDuration) || 1.5) * 60)
                 }),
             });
             const data = await res.json();
@@ -126,7 +128,10 @@ export default function LobbyScreen() {
                                             </span>
                                         )}
                                     </div>
-                                    <div className="room-item-meta">👥 {r.players.length}/{r.maxPlayers} &nbsp;|&nbsp; 🔄 {r.totalRounds} rounds</div>
+                                    <div className="room-item-meta">
+                                        🎮 {r.gameType === 'truth_or_dare' ? 'Truth or Dare' : 'Drawing'} &nbsp;|&nbsp;
+                                        👥 {r.players.length}/{r.maxPlayers} &nbsp;|&nbsp; 🔄 {r.totalRounds} rounds
+                                    </div>
                                 </div>
                                 <span className="room-code-mono">{r.roomCode}</span>
                                 <button className="room-item-btn" onClick={() => { setJoinCode(r.roomCode); handleJoin(r.roomCode); }}>Join</button>
@@ -143,31 +148,40 @@ export default function LobbyScreen() {
                             <label>Room Name</label>
                             <input value={roomName} onChange={e => setRoomName(e.target.value)} placeholder="My Awesome Room" maxLength={30} />
                         </div>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Rounds</label>
-                                <input
-                                    type="number"
-                                    min={1}
-                                    max={20}
-                                    value={totalRounds}
-                                    onChange={e => setTotalRounds(e.target.value)}
-                                    placeholder="3"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Time / Round (mins)</label>
-                                <input
-                                    type="number"
-                                    min={0.5}
-                                    max={10}
-                                    step="0.5"
-                                    value={roundDuration}
-                                    onChange={e => setRoundDuration(e.target.value)}
-                                    placeholder="1.5"
-                                />
-                            </div>
+                        <div className="form-group">
+                            <label>Game Mode</label>
+                            <select value={gameType} onChange={e => setGameType(e.target.value)}>
+                                <option value="drawing">🎨 Draw & Guess</option>
+                                <option value="truth_or_dare">🎭 Truth or Dare</option>
+                            </select>
                         </div>
+                        {gameType !== 'truth_or_dare' && (
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label>Rounds</label>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        max={20}
+                                        value={totalRounds}
+                                        onChange={e => setTotalRounds(e.target.value)}
+                                        placeholder="3"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Time / Round (mins)</label>
+                                    <input
+                                        type="number"
+                                        min={0.5}
+                                        max={10}
+                                        step="0.5"
+                                        value={roundDuration}
+                                        onChange={e => setRoundDuration(e.target.value)}
+                                        placeholder="1.5"
+                                    />
+                                </div>
+                            </div>
+                        )}
                         <button className="btn btn-primary" onClick={handleCreate}>Create Room ✨</button>
                     </div>
 

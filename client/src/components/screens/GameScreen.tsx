@@ -4,13 +4,14 @@ import { useCanvas } from '../../hooks/useCanvas';
 import DrawToolbar from '../game/DrawToolbar';
 import PlayerSidebar from '../game/PlayerSidebar';
 import Chat from '../game/Chat';
+import TruthOrDareGame from '../game/TruthOrDareGame';
 import type { DrawTool } from '../../types/game.types';
 import socket from '../../config/socket';
 
 const TOTAL_TIME_REF = { current: 80 };
 
 export default function GameScreen() {
-    const { round, totalRounds, hint, timeLeft, roundDuration, isDrawer, drawerSocketId, players, currentWord, mySocketId } = useGameStore();
+    const { round, totalRounds, hint, timeLeft, roundDuration, isDrawer, drawerSocketId, players, currentWord, mySocketId, gameType } = useGameStore();
 
     const me = players.find(p => p.socketId === mySocketId);
     const hasGuessed = me?.hasGuessedCorrectly;
@@ -70,7 +71,9 @@ export default function GameScreen() {
                 </div>
 
                 <div className="topbar-center">
-                    {isDrawer || hasGuessed ? (
+                    {gameType === 'truth_or_dare' ? (
+                        <div className="word-display">🎭 Truth or Dare</div>
+                    ) : isDrawer || hasGuessed ? (
                         <div className={`word-display ${hasGuessed ? 'correct-word' : ''}`}>
                             {hint || '_ _ _ _ _'}
                         </div>
@@ -104,7 +107,8 @@ export default function GameScreen() {
                             />
                         </label>
                     )}
-                    {isDrawer && <div className="drawing-tag">✏️ You are drawing!</div>}
+                    {isDrawer && gameType !== 'truth_or_dare' && <div className="drawing-tag">✏️ You are drawing!</div>}
+                    {isDrawer && gameType === 'truth_or_dare' && <div className="drawing-tag">✅ It's your turn!</div>}
                 </div>
 
                 <div className="topbar-right">
@@ -123,51 +127,55 @@ export default function GameScreen() {
             </div>
 
             {/* Main Body */}
-            <div className="game-body">
-                <PlayerSidebar />
+            {gameType === 'truth_or_dare' ? (
+                <TruthOrDareGame />
+            ) : (
+                <div className="game-body">
+                    <PlayerSidebar />
 
-                <div className="canvas-area">
-                    <div className="canvas-wrapper">
-                        <canvas
-                            ref={canvasRef}
-                            width={800}
-                            height={540}
-                            style={{ cursor: isDrawer ? (tool === 'fill' ? 'crosshair' : 'crosshair') : 'not-allowed' }}
-                            onMouseDown={e => onPointerDown(e.nativeEvent)}
-                            onMouseMove={e => onPointerMove(e.nativeEvent)}
-                            onMouseUp={onPointerUp}
-                            onMouseLeave={onPointerUp}
-                            onTouchStart={e => onPointerDown(e.nativeEvent)}
-                            onTouchMove={e => onPointerMove(e.nativeEvent)}
-                            onTouchEnd={onPointerUp}
-                        />
-                        {overlay && (
-                            <div className="round-overlay">
-                                <div className="overlay-content">
-                                    <div className="overlay-icon">{overlay.icon}</div>
-                                    <h2>{overlay.title}</h2>
-                                    <p>{overlay.sub}</p>
+                    <div className="canvas-area">
+                        <div className="canvas-wrapper">
+                            <canvas
+                                ref={canvasRef}
+                                width={800}
+                                height={540}
+                                style={{ cursor: isDrawer ? (tool === 'fill' ? 'crosshair' : 'crosshair') : 'not-allowed' }}
+                                onMouseDown={e => onPointerDown(e.nativeEvent)}
+                                onMouseMove={e => onPointerMove(e.nativeEvent)}
+                                onMouseUp={onPointerUp}
+                                onMouseLeave={onPointerUp}
+                                onTouchStart={e => onPointerDown(e.nativeEvent)}
+                                onTouchMove={e => onPointerMove(e.nativeEvent)}
+                                onTouchEnd={onPointerUp}
+                            />
+                            {overlay && (
+                                <div className="round-overlay">
+                                    <div className="overlay-content">
+                                        <div className="overlay-icon">{overlay.icon}</div>
+                                        <h2>{overlay.title}</h2>
+                                        <p>{overlay.sub}</p>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
+                        </div>
+
+                        {isDrawer && (
+                            <DrawToolbar
+                                color={color}
+                                brushSize={brushSize}
+                                tool={tool}
+                                onColorChange={setColor}
+                                onSizeChange={setBrushSize}
+                                onToolChange={setTool}
+                                onUndo={handleUndo}
+                                onClear={handleClear}
+                            />
                         )}
                     </div>
 
-                    {isDrawer && (
-                        <DrawToolbar
-                            color={color}
-                            brushSize={brushSize}
-                            tool={tool}
-                            onColorChange={setColor}
-                            onSizeChange={setBrushSize}
-                            onToolChange={setTool}
-                            onUndo={handleUndo}
-                            onClear={handleClear}
-                        />
-                    )}
+                    <Chat />
                 </div>
-
-                <Chat />
-            </div>
+            )}
         </div>
     );
 }

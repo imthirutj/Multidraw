@@ -6,6 +6,7 @@ export interface GameRoomDoc {
     id: string;
     roomCode: string;
     roomName: string;
+    gameType: string;
     players: Player[];
     status: GameStatus;
     currentRound: number;
@@ -44,6 +45,7 @@ export const RoomRepository = {
     async create(data: {
         roomCode: string;
         roomName: string;
+        gameType: string;
         totalRounds: number;
         roundDuration: number;
         maxPlayers: number;

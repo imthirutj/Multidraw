@@ -1,9 +1,11 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useGameStore } from '../../store/game.store';
 import socket from '../../config/socket';
+import { useVoiceChat } from '../../hooks/useVoiceChat';
 
 export default function Chat() {
-    const { chatMessages, isDrawer } = useGameStore();
+    const { chatMessages, isDrawer, roomCode } = useGameStore();
+    const { isSpeaking, startSpeaking, stopSpeaking, error } = useVoiceChat(roomCode);
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
@@ -109,7 +111,20 @@ export default function Chat() {
                 </div>
             )}
 
-            <div className="chat-input-row">
+            <div className="chat-input-row" style={{ position: 'relative' }}>
+                {error && <div style={{ position: 'absolute', top: '-25px', color: 'red', fontSize: '10px' }}>{error}</div>}
+                <button
+                    className="gif-toggle-btn"
+                    onMouseDown={startSpeaking}
+                    onMouseUp={stopSpeaking}
+                    onMouseLeave={stopSpeaking}
+                    onTouchStart={startSpeaking}
+                    onTouchEnd={stopSpeaking}
+                    title={isSpeaking ? "Release to Mute" : "Hold to Talk"}
+                    style={{ background: isSpeaking ? 'rgba(50,255,50,0.2)' : 'rgba(255,255,255,0.05)', color: isSpeaking ? '#4caf50' : '#888' }}
+                >
+                    {isSpeaking ? '🎙️' : '🎤'}
+                </button>
                 <button
                     className="gif-toggle-btn"
                     onClick={() => setShowGifMenu(!showGifMenu)}

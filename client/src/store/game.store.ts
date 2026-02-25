@@ -10,6 +10,7 @@ interface GameState {
     // Room
     roomCode: string;
     roomName: string;
+    gameType: string;
     isHost: boolean;
     hostTransferRequestedBy: string | null;
     status: GameStatus;
@@ -21,9 +22,11 @@ interface GameState {
     round: number;
     isDrawer: boolean;
     drawerSocketId: string;
+    drawerName: string;
     currentWord: string;   // only set for drawer
     hint: string;
     timeLeft: number;
+    tdChoice: { choice: 'truth' | 'dare'; prompt: string } | null;
 
     // UI
     screen: Screen;
@@ -40,6 +43,7 @@ interface GameState {
     setHint: (hint: string) => void;
     setTimeLeft: (t: number) => void;
     setCurrentWord: (w: string) => void;
+    setTdChoice: (val: GameState['tdChoice']) => void;
     addChat: (msg: ChatMessage) => void;
     setLeaderboard: (lb: Player[]) => void;
     reset: () => void;
@@ -51,6 +55,7 @@ const initialState = {
     avatar: '',
     roomCode: '',
     roomName: '',
+    gameType: 'drawing',
     isHost: false,
     hostTransferRequestedBy: null as string | null,
     status: 'waiting' as GameStatus,
@@ -60,9 +65,11 @@ const initialState = {
     round: 0,
     isDrawer: false,
     drawerSocketId: '',
+    drawerName: '',
     currentWord: '',
     hint: '',
     timeLeft: 80,
+    tdChoice: null as GameState['tdChoice'],
     screen: 'lobby' as Screen,
     chatMessages: [] as ChatMessage[],
     leaderboard: [] as Player[],
@@ -80,6 +87,7 @@ export const useGameStore = create<GameState>(set => ({
     setHint: hint => set({ hint }),
     setTimeLeft: timeLeft => set({ timeLeft }),
     setCurrentWord: currentWord => set({ currentWord }),
+    setTdChoice: tdChoice => set({ tdChoice }),
     addChat: msg =>
         set(s => ({ chatMessages: [...s.chatMessages.slice(-200), msg] })),
     setLeaderboard: leaderboard => set({ leaderboard }),

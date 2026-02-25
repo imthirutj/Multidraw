@@ -25,6 +25,7 @@ export interface RoundHistory {
 export interface GameRoom {
     roomCode: string;
     roomName: string;
+    gameType: string;
     players: Player[];
     status: GameStatus;
     currentRound: number;
@@ -55,7 +56,11 @@ export interface ClientToServerEvents {
     'host:respond': () => void;
     'room:kick': (payload: { targetSocketId: string }) => void;
     'room:delete': () => void;
-    'canvas:respond': (payload: { dataURL: string; toSocketId: string }) => void;
+    'td:choose': (payload: { choice: 'truth' | 'dare' }) => void;
+    'td:next_turn': () => void;
+
+    'webrtc:join': () => void;
+    'webrtc:signal': (payload: { to: string; type: string; data: any }) => void;
 }
 
 // ─── Socket Events: Server → Client ──────────────────────────────────────────
@@ -91,6 +96,11 @@ export interface ServerToClientEvents {
     'canvas:request': (payload: { requesterSocketId: string }) => void;
     'canvas:sync': (payload: { dataURL: string }) => void;
 
+    'td:chosen': (payload: { choice: 'truth' | 'dare'; prompt: string }) => void;
+
+    'webrtc:user_joined': (payload: { socketId: string }) => void;
+    'webrtc:signal': (payload: { from: string; type: string; data: any }) => void;
+
     error: (payload: { message: string }) => void;
 }
 
@@ -98,6 +108,7 @@ export interface ServerToClientEvents {
 export interface RoomJoinedPayload {
     roomCode: string;
     roomName: string;
+    gameType: string;
     players: Player[];
     isHost: boolean;
     status: GameStatus;
@@ -150,6 +161,7 @@ export interface DrawUndoPayload {
 // ─── API ──────────────────────────────────────────────────────────────────────
 export interface CreateRoomBody {
     roomName?: string;
+    gameType?: string;
     totalRounds?: number;
     roundDuration?: number;
     maxPlayers?: number;
@@ -158,6 +170,7 @@ export interface CreateRoomBody {
 export interface RoomListItem {
     roomCode: string;
     roomName: string;
+    gameType: string;
     players: Pick<Player, 'username'>[];
     maxPlayers: number;
     totalRounds: number;
