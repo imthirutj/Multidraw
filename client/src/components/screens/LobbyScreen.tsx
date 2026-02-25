@@ -9,14 +9,14 @@ const randomAvatar = () => AVATARS[Math.floor(Math.random() * AVATARS.length)];
 export default function LobbyScreen() {
     const { setIdentity } = useGameStore();
 
+    const [playerName, setPlayerName] = useState(() => localStorage.getItem('playerName') || '');
+
     // Create form
-    const [createName, setCreateName] = useState('');
     const [roomName, setRoomName] = useState('');
-    const [totalRounds, setTotalRounds] = useState(3);
-    const [roundDuration, setRoundDuration] = useState(80);
+    const [totalRounds, setTotalRounds] = useState<number | string>(3);
+    const [roundDuration, setRoundDuration] = useState<number | string>(1.5);
 
     // Join form
-    const [joinName, setJoinName] = useState('');
     const [joinCode, setJoinCode] = useState('');
 
     // Rooms list
@@ -42,31 +42,41 @@ export default function LobbyScreen() {
     }, []);
 
     const handleCreate = async () => {
-        if (!createName.trim()) return setError('Enter your name first');
+        const nameToUse = playerName.trim();
+        if (!nameToUse) return setError('Enter your name first');
+        localStorage.setItem('playerName', nameToUse);
+
         const avatar = randomAvatar();
-        setIdentity(createName.trim(), avatar);
+        setIdentity(nameToUse, avatar);
 
         try {
             const res = await fetch('/api/rooms', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ roomName: roomName || 'Drawing Room', totalRounds, roundDuration }),
+                body: JSON.stringify({
+                    roomName: roomName || 'Drawing Room',
+                    totalRounds: Number(totalRounds) || 3,
+                    roundDuration: Math.round((Number(roundDuration) || 1.5) * 60)
+                }),
             });
             const data = await res.json();
             if (!res.ok) return setError(data.error || 'Failed to create room');
-            socket.emit('room:join', { roomCode: data.roomCode, username: createName.trim(), avatar });
+            socket.emit('room:join', { roomCode: data.roomCode, username: nameToUse, avatar });
         } catch {
             setError('Server unreachable. Is the server running?');
         }
     };
 
-    const handleJoin = () => {
-        if (!joinName.trim()) return setError('Enter your name first');
-        const code = joinCode.trim().toUpperCase();
+    const handleJoin = (codeOverride?: string) => {
+        const nameToUse = playerName.trim();
+        if (!nameToUse) return setError('Enter your name first');
+        localStorage.setItem('playerName', nameToUse);
+
+        const code = (codeOverride || joinCode).trim().toUpperCase();
         if (code.length !== 6) return setError('Enter a valid 6-character room code');
         const avatar = randomAvatar();
-        setIdentity(joinName.trim(), avatar);
-        socket.emit('room:join', { roomCode: code, username: joinName.trim(), avatar });
+        setIdentity(nameToUse, avatar);
+        socket.emit('room:join', { roomCode: code, username: nameToUse, avatar });
     };
 
     return (
@@ -84,14 +94,43 @@ export default function LobbyScreen() {
 
                 {error && <div className="error-banner">⚠️ {error}</div>}
 
+                {/* Shared Player Name Input */}
+                <div className="card glass-card" style={{ marginBottom: '20px', padding: '15px' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label>Your Name</label>
+                        <input
+                            value={playerName}
+                            onChange={e => setPlayerName(e.target.value)}
+                            placeholder="Enter your name…"
+                            maxLength={16}
+                            style={{ textAlign: 'center', fontSize: '1.2rem', fontWeight: 'bold' }}
+                        />
+                    </div>
+                </div>
+
+                {/* Available Rooms Section (Now on top) */}
+                <div className="card glass-card" style={{ marginBottom: '20px' }}>
+                    <h2 style={{ marginBottom: '15px' }}>🌐 Available Rooms</h2>
+                    <div className="rooms-list" style={{ maxHeight: '200px', overflowY: 'auto', marginTop: 0 }}>
+                        {rooms.length === 0 ? (
+                            <p className="no-rooms">No open rooms found</p>
+                        ) : rooms.map(r => (
+                            <div key={r.roomCode} className="room-item">
+                                <div>
+                                    <div className="room-item-name">{r.roomName}</div>
+                                    <div className="room-item-meta">👥 {r.players.length}/{r.maxPlayers} &nbsp;|&nbsp; 🔄 {r.totalRounds} rounds</div>
+                                </div>
+                                <span className="room-code-mono">{r.roomCode}</span>
+                                <button className="room-item-btn" onClick={() => { setJoinCode(r.roomCode); handleJoin(r.roomCode); }}>Join</button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
                 <div className="lobby-cards">
-                    {/* Create */}
+                    {/* Create Room */}
                     <div className="card glass-card">
                         <h2>🏠 Create Room</h2>
-                        <div className="form-group">
-                            <label>Your Name</label>
-                            <input value={createName} onChange={e => setCreateName(e.target.value)} placeholder="Enter your name…" maxLength={16} />
-                        </div>
                         <div className="form-group">
                             <label>Room Name</label>
                             <input value={roomName} onChange={e => setRoomName(e.target.value)} placeholder="My Awesome Room" maxLength={30} />
@@ -99,27 +138,34 @@ export default function LobbyScreen() {
                         <div className="form-row">
                             <div className="form-group">
                                 <label>Rounds</label>
-                                <select value={totalRounds} onChange={e => setTotalRounds(Number(e.target.value))}>
-                                    {[2, 3, 5, 8].map(n => <option key={n} value={n}>{n}</option>)}
-                                </select>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={20}
+                                    value={totalRounds}
+                                    onChange={e => setTotalRounds(e.target.value)}
+                                    placeholder="3"
+                                />
                             </div>
                             <div className="form-group">
-                                <label>Time / Round</label>
-                                <select value={roundDuration} onChange={e => setRoundDuration(Number(e.target.value))}>
-                                    {[60, 80, 120].map(n => <option key={n} value={n}>{n}s</option>)}
-                                </select>
+                                <label>Time / Round (mins)</label>
+                                <input
+                                    type="number"
+                                    min={0.5}
+                                    max={10}
+                                    step="0.5"
+                                    value={roundDuration}
+                                    onChange={e => setRoundDuration(e.target.value)}
+                                    placeholder="1.5"
+                                />
                             </div>
                         </div>
                         <button className="btn btn-primary" onClick={handleCreate}>Create Room ✨</button>
                     </div>
 
-                    {/* Join */}
+                    {/* Join Room Manually */}
                     <div className="card glass-card">
-                        <h2>🚪 Join Room</h2>
-                        <div className="form-group">
-                            <label>Your Name</label>
-                            <input value={joinName} onChange={e => setJoinName(e.target.value)} placeholder="Enter your name…" maxLength={16} />
-                        </div>
+                        <h2>🚪 Join via Code</h2>
                         <div className="form-group">
                             <label>Room Code</label>
                             <input
@@ -127,27 +173,10 @@ export default function LobbyScreen() {
                                 onChange={e => setJoinCode(e.target.value.toUpperCase())}
                                 placeholder="e.g. AB12CD"
                                 maxLength={6}
-                                style={{ textTransform: 'uppercase', letterSpacing: '3px' }}
+                                style={{ textTransform: 'uppercase', letterSpacing: '3px', textAlign: 'center', fontSize: '1.5rem', marginTop: '10px' }}
                             />
                         </div>
-                        <button className="btn btn-secondary" onClick={handleJoin}>Join Room 🎮</button>
-
-                        <div className="divider"><span>Or browse open rooms</span></div>
-
-                        <div className="rooms-list">
-                            {rooms.length === 0 ? (
-                                <p className="no-rooms">No open rooms found</p>
-                            ) : rooms.map(r => (
-                                <div key={r.roomCode} className="room-item">
-                                    <div>
-                                        <div className="room-item-name">{r.roomName}</div>
-                                        <div className="room-item-meta">👥 {r.players.length}/{r.maxPlayers} &nbsp;|&nbsp; 🔄 {r.totalRounds} rounds</div>
-                                    </div>
-                                    <span className="room-code-mono">{r.roomCode}</span>
-                                    <button className="room-item-btn" onClick={() => setJoinCode(r.roomCode)}>Select</button>
-                                </div>
-                            ))}
-                        </div>
+                        <button className="btn btn-secondary" onClick={() => handleJoin()} style={{ marginTop: 'auto' }}>Join Room 🎮</button>
                     </div>
                 </div>
             </div>

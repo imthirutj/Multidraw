@@ -196,6 +196,7 @@ label {
 }
 
 input[type="text"],
+input[type="number"],
 input:not([type]),
 select,
 input[type="range"]+span {
@@ -214,6 +215,7 @@ input[type="range"]+span {
 }
 
 input[type="text"]:hover,
+input[type="number"]:hover,
 input:not([type]):hover,
 select:hover {
     border-color: rgba(255, 255, 255, 0.25);
@@ -221,6 +223,7 @@ select:hover {
 }
 
 input[type="text"]:focus,
+input[type="number"]:focus,
 input:not([type]):focus,
 select:focus {
     border-color: var(--primary);
