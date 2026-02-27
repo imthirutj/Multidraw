@@ -160,8 +160,8 @@ export default function LobbyScreen() {
                         {rooms.length === 0 ? (
                             <p className="no-rooms">No open rooms found</p>
                         ) : rooms.map(r => {
-                            const modeIcon = r.gameType === 'truth_or_dare' ? '🎭' : r.gameType === 'watch_together' ? '🎬' : '🎨';
-                            const modeLabel = r.gameType === 'truth_or_dare' ? 'Truth or Dare' : r.gameType === 'watch_together' ? 'Watch Together' : 'Draw & Guess';
+                            const modeIcon = r.gameType === 'truth_or_dare' ? '🎭' : r.gameType === 'watch_together' ? '🎬' : r.gameType === 'bottle_spin' ? '🍾' : '🎨';
+                            const modeLabel = r.gameType === 'truth_or_dare' ? 'Truth or Dare' : r.gameType === 'watch_together' ? 'Watch Together' : r.gameType === 'bottle_spin' ? 'Bottle Spin' : 'Draw & Guess';
                             return (
                                 <div key={r.roomCode} className="room-item">
                                     <div>
@@ -205,6 +205,7 @@ export default function LobbyScreen() {
                             <select ref={gameTypeSelectRef} value={gameType} onChange={e => setGameType(e.target.value)}>
                                 <option value="drawing">🎨 Draw & Guess</option>
                                 <option value="truth_or_dare">🎭 Truth or Dare</option>
+                                <option value="bottle_spin">🍾 Bottle Spin</option>
                                 <option value="watch_together">🎬 Watch Together</option>
                             </select>
                         </div>

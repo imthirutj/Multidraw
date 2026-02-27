@@ -61,6 +61,10 @@ export interface ClientToServerEvents {
     'td:submit_prompt': (payload: { prompt: string }) => void;
     'td:next_turn': () => void;
 
+    // Bottle Spin
+    'bs:spin': (payload: { rotationOffset: number; targetIndex: number; promptType: 'truth' | 'dare'; promptText: string }) => void;
+    'bs:resolve': (payload: { action: 'complete' | 'skip' | 'refuse'; pointDelta: number; answer?: string }) => void;
+
     'webrtc:join': () => void;
     'webrtc:signal': (payload: { to: string; type: string; data: any }) => void;
 
@@ -107,6 +111,9 @@ export interface ServerToClientEvents {
 
     'td:chosen': (payload: { choice: 'truth' | 'dare'; prompt?: string }) => void;
     'td:prompt_ready': (payload: { prompt: string }) => void;
+
+    // Bottle Spin
+    'bs:spun': (payload: { rotationOffset: number; targetIndex: number; targetSocketId: string; promptType: 'truth' | 'dare'; promptText: string }) => void;
 
     'webrtc:user_joined': (payload: { socketId: string }) => void;
     'webrtc:signal': (payload: { from: string; type: string; data: any }) => void;

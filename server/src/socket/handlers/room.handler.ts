@@ -272,6 +272,53 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         gameService.endRound(roomCode);
     });
 
+    // Bottle Spin
+    socket.on('bs:spin', async ({ rotationOffset, targetIndex, promptType, promptText }) => {
+        const { roomCode } = socket.data;
+        if (!roomCode) return;
+        const room = await RoomRepository.findByCode(roomCode);
+        if (!room || room.status !== 'playing') return;
+
+        if (room.currentDrawer !== socket.id && room.hostSocketId !== socket.id) return; // Note: For flawless testing host can trigger fallback
+
+        const targetSocketId = room.players[targetIndex]?.socketId;
+        if (!targetSocketId) return;
+
+        io.to(roomCode).emit('bs:spun', { rotationOffset, targetIndex, targetSocketId, promptType, promptText });
+        io.to(roomCode).emit('chat:message', { type: 'system', text: `🍾 The bottle is spinning...` });
+    });
+
+    socket.on('bs:resolve', async ({ action, pointDelta, answer }) => {
+        const { roomCode } = socket.data;
+        if (!roomCode) return;
+        const room = await RoomRepository.findByCode(roomCode);
+        if (!room || room.status !== 'playing') return;
+
+        // Apply score update
+        if (pointDelta !== 0) {
+            const players = room.players.map(p => {
+                if (p.socketId === socket.id) return { ...p, score: p.score + pointDelta };
+                return p;
+            });
+            await RoomRepository.save(roomCode, { players });
+            // Sync players visually
+            io.to(roomCode).emit('player:joined', { players, username: '' });
+        }
+
+        const player = room.players.find(p => p.socketId === socket.id);
+        const name = player?.username || 'Someone';
+
+        if (action === 'complete') {
+            const answerText = answer ? ` Answer: "${answer}"` : '';
+            io.to(roomCode).emit('chat:message', { type: 'system', text: `${name} completed the task!${answerText} (${pointDelta > 0 ? '+' : ''}${pointDelta} pts)` });
+        } else {
+            const msgMap = { skip: 'skipped their task.', refuse: 'refused the task!' };
+            io.to(roomCode).emit('chat:message', { type: 'system', text: `${name} ${msgMap[action] || 'finished'} (${pointDelta > 0 ? '+' : ''}${pointDelta} pts)` });
+        }
+
+        gameService.endRound(roomCode);
+    });
+
     socket.on('webrtc:join', () => {
         const { roomCode } = socket.data;
         if (!roomCode) return;

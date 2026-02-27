@@ -62,3 +62,13 @@ export interface RoomListItem {
     totalRounds: number;
     status: GameStatus;
 }
+
+
+export interface ClientToServerEvents {
+    'bs:spin': (payload: { rotationOffset: number; targetIndex: number; promptType: 'truth' | 'dare'; promptText: string }) => void;
+    'bs:resolve': (payload: { action: 'complete' | 'skip' | 'refuse'; pointDelta: number; answer?: string }) => void;
+}
+
+export interface ServerToClientEvents {
+    'bs:spun': (payload: { rotationOffset: number; targetIndex: number; targetSocketId: string; promptType: 'truth' | 'dare'; promptText: string }) => void;
+}

@@ -90,6 +90,7 @@ export function useSocketEvents(): void {
                 roundDuration: payload.timeLeft,
                 currentWord: '',
                 tdChoice: null,
+                bsSpin: null,
             });
             store.setPlayers(
                 useGameStore.getState().players.map(p => ({ ...p, hasGuessedCorrectly: false }))
@@ -135,6 +136,10 @@ export function useSocketEvents(): void {
             if (currentChoice) {
                 store.setTdChoice({ ...currentChoice, prompt });
             }
+        });
+
+        socket.on('bs:spun', payload => {
+            store.setBsSpin(payload);
         });
 
         socket.on('wt:state', payload => {

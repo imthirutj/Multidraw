@@ -64,6 +64,38 @@ export class GameService {
             return;
         }
 
+        // Bottle Spin uses the round system only to rotate the active spinner.
+        if (room.gameType === 'bottle_spin') {
+            const updatedRoom = await RoomRepository.save(roomCode, {
+                players,
+                currentWord: '',
+                currentDrawer: drawer.socketId,
+                currentRound,
+                roundHistories: [
+                    ...room.roundHistories,
+                    {
+                        roundNumber: currentRound,
+                        word: '',
+                        drawer: drawer.username,
+                        correctGuessers: [],
+                        startedAt: new Date(),
+                    },
+                ],
+            });
+
+            this.io.to(roomCode).emit('round:start', {
+                round: updatedRoom.currentRound,
+                totalRounds: updatedRoom.totalRounds,
+                drawerSocketId: drawer.socketId,
+                drawerName: drawer.username,
+                hint: '',
+                timeLeft: updatedRoom.roundDuration,
+            });
+
+            this.startTimer(roomCode, updatedRoom.roundDuration, '');
+            return;
+        }
+
         const currentWord = getRandomWord();
 
         const updatedRoom = await RoomRepository.save(roomCode, {
@@ -152,8 +184,8 @@ export class GameService {
         this.io.to(roomCode).emit('round:end', { word: room.currentWord, players: room.players });
 
         const delay = 4_000;
-        // Truth or Dare never "finishes" — it just rotates turns indefinitely.
-        if (room.gameType === 'truth_or_dare') {
+        // Truth or Dare and Bottle Spin never "finishes" — it just rotates turns indefinitely.
+        if (room.gameType === 'truth_or_dare' || room.gameType === 'bottle_spin') {
             setTimeout(() => this.startRound(roomCode), delay);
             return;
         }
@@ -165,7 +197,7 @@ export class GameService {
     async endGame(roomCode: string): Promise<void> {
         const room = await RoomRepository.findByCode(roomCode);
         if (!room) return;
-        if (room.gameType === 'truth_or_dare') return; // TD sessions do not end
+        if (room.gameType === 'truth_or_dare' || room.gameType === 'bottle_spin') return; // Endless sessions do not end
         await RoomRepository.save(roomCode, { status: 'finished' });
         const leaderboard = [...room.players].sort((a, b) => b.score - a.score);
         this.io.to(roomCode).emit('game:over', { leaderboard });

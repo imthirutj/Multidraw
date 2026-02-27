@@ -6,6 +6,7 @@ import PlayerSidebar from '../game/PlayerSidebar';
 import Chat from '../game/Chat';
 import TruthOrDareGame from '../game/TruthOrDareGame';
 import WatchTogetherGame from '../game/WatchTogetherGame';
+import BottleSpinGame from '../game/BottleSpinGame';
 import type { DrawTool } from '../../types/game.types';
 import socket from '../../config/socket';
 
@@ -15,6 +16,7 @@ export default function GameScreen() {
     const { round, totalRounds, hint, timeLeft, roundDuration, isDrawer, drawerSocketId, players, currentWord, mySocketId, gameType, isHost, hostTransferRequestedBy, roomCode, roomName } = useGameStore();
     const isWatchTogether = gameType === 'watch_together';
     const isTruthOrDare = gameType === 'truth_or_dare';
+    const isBottleSpin = gameType === 'bottle_spin';
 
     const me = players.find(p => p.socketId === mySocketId);
     const hasGuessed = me?.hasGuessedCorrectly;
@@ -75,6 +77,8 @@ export default function GameScreen() {
                             <div className="round-badge">🎬 Watch Together</div>
                         ) : isTruthOrDare ? (
                             <div className="round-badge">🎭 Truth or Dare</div>
+                        ) : isBottleSpin ? (
+                            <div className="round-badge">🍾 Bottle Spin</div>
                         ) : (
                             <div className="round-badge">Round <strong>{round}</strong> / {totalRounds}</div>
                         )}
@@ -131,8 +135,10 @@ export default function GameScreen() {
                 <div className="topbar-center">
                     {isWatchTogether ? (
                         <div className="word-display">🎬 Watch Together</div>
-                    ) : gameType === 'truth_or_dare' ? (
+                    ) : isTruthOrDare ? (
                         <div className="word-display">🎭 Truth or Dare</div>
+                    ) : isBottleSpin ? (
+                        <div className="word-display">🍾 Bottle Spin</div>
                     ) : isDrawer || hasGuessed ? (
                         <div className={`word-display ${hasGuessed ? 'correct-word' : ''}`}>
                             {hint || '_ _ _ _ _'}
@@ -167,8 +173,8 @@ export default function GameScreen() {
                             />
                         </label>
                     )}
-                    {!isWatchTogether && isDrawer && gameType !== 'truth_or_dare' && <div className="drawing-tag">✏️ You are drawing!</div>}
-                    {!isWatchTogether && isDrawer && gameType === 'truth_or_dare' && <div className="drawing-tag">✅ It's your turn!</div>}
+                    {!isWatchTogether && isDrawer && !isTruthOrDare && !isBottleSpin && <div className="drawing-tag">✏️ You are drawing!</div>}
+                    {!isWatchTogether && isDrawer && (isTruthOrDare || isBottleSpin) && <div className="drawing-tag">✅ It's your turn!</div>}
                 </div>
 
                 <div className="topbar-right">
@@ -218,8 +224,10 @@ export default function GameScreen() {
             {/* Main Body */}
             {isWatchTogether ? (
                 <WatchTogetherGame />
-            ) : gameType === 'truth_or_dare' ? (
+            ) : isTruthOrDare ? (
                 <TruthOrDareGame />
+            ) : isBottleSpin ? (
+                <BottleSpinGame />
             ) : (
                 <div className="game-body">
                     <PlayerSidebar />
