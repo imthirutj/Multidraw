@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import roomsRouter from './routes/rooms.router';
+import watchRouter from './routes/watch.router';
 import env from './config/env';
 
 const app = express();
@@ -12,6 +13,7 @@ app.use(express.json());
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/rooms', roomsRouter);
+app.use('/api/watch', watchRouter);
 
 // Health check endpoint for cron jobs (e.g. Keep Alive on Render)
 app.get('/api/health', (_req, res) => {
