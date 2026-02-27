@@ -159,31 +159,36 @@ export default function LobbyScreen() {
                     <div className="rooms-list" style={{ maxHeight: '200px', overflowY: 'auto', marginTop: 0 }}>
                         {rooms.length === 0 ? (
                             <p className="no-rooms">No open rooms found</p>
-                        ) : rooms.map(r => (
-                            <div key={r.roomCode} className="room-item">
-                                <div>
-                                    <div className="room-item-name">
-                                        {r.roomName}
-                                        {r.status === 'playing' && (
-                                            <span style={{ marginLeft: '8px', fontSize: '0.7rem', backgroundColor: 'var(--primary)', color: '#fff', padding: '2px 6px', borderRadius: '4px', verticalAlign: 'middle' }}>
-                                                ▶ Playing
-                                            </span>
-                                        )}
+                        ) : rooms.map(r => {
+                            const modeIcon = r.gameType === 'truth_or_dare' ? '🎭' : r.gameType === 'watch_together' ? '🎬' : '🎨';
+                            const modeLabel = r.gameType === 'truth_or_dare' ? 'Truth or Dare' : r.gameType === 'watch_together' ? 'Watch Together' : 'Draw & Guess';
+                            return (
+                                <div key={r.roomCode} className="room-item">
+                                    <div>
+                                        <div className="room-item-name">
+                                            <span style={{ marginRight: 6 }}>{modeIcon}</span>
+                                            {r.roomName}
+                                            {r.status === 'playing' && (
+                                                <span style={{ marginLeft: '8px', fontSize: '0.7rem', backgroundColor: 'var(--primary)', color: '#fff', padding: '2px 6px', borderRadius: '4px', verticalAlign: 'middle' }}>
+                                                    ▶ Playing
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="room-item-meta">
+                                            {modeLabel} &nbsp;|&nbsp;
+                                            👥 {r.players.length}/{r.maxPlayers}
+                                            {r.gameType !== 'watch_together' && (
+                                                <>
+                                                    &nbsp;|&nbsp; 🔄 {r.totalRounds} rounds
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="room-item-meta">
-                                        🎮 {r.gameType === 'truth_or_dare' ? 'Truth or Dare' : r.gameType === 'watch_together' ? 'Watch Together' : 'Drawing'} &nbsp;|&nbsp;
-                                        👥 {r.players.length}/{r.maxPlayers}
-                                        {r.gameType !== 'watch_together' && (
-                                            <>
-                                                &nbsp;|&nbsp; 🔄 {r.totalRounds} rounds
-                                            </>
-                                        )}
-                                    </div>
+                                    <span className="room-code-mono">{r.roomCode}</span>
+                                    <button className="room-item-btn" onClick={() => { setJoinCode(r.roomCode); handleJoin(r.roomCode); }}>Join</button>
                                 </div>
-                                <span className="room-code-mono">{r.roomCode}</span>
-                                <button className="room-item-btn" onClick={() => { setJoinCode(r.roomCode); handleJoin(r.roomCode); }}>Join</button>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 
