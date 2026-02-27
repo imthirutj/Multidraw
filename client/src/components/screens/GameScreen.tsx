@@ -12,7 +12,7 @@ import socket from '../../config/socket';
 const TOTAL_TIME_REF = { current: 80 };
 
 export default function GameScreen() {
-    const { round, totalRounds, hint, timeLeft, roundDuration, isDrawer, drawerSocketId, players, currentWord, mySocketId, gameType, isHost, hostTransferRequestedBy } = useGameStore();
+    const { round, totalRounds, hint, timeLeft, roundDuration, isDrawer, drawerSocketId, players, currentWord, mySocketId, gameType, isHost, hostTransferRequestedBy, roomCode, roomName } = useGameStore();
     const isWatchTogether = gameType === 'watch_together';
     const isTruthOrDare = gameType === 'truth_or_dare';
 
@@ -70,13 +70,62 @@ export default function GameScreen() {
             <div className="game-topbar">
                 <div className="topbar-left">
                     <span className="logo-sm">🎨 MultiDraw</span>
-                    {isWatchTogether ? (
-                        <div className="round-badge">🎬 Watch Together</div>
-                    ) : isTruthOrDare ? (
-                        <div className="round-badge">🎭 Truth or Dare</div>
-                    ) : (
-                        <div className="round-badge">Round <strong>{round}</strong> / {totalRounds}</div>
-                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {isWatchTogether ? (
+                            <div className="round-badge">🎬 Watch Together</div>
+                        ) : isTruthOrDare ? (
+                            <div className="round-badge">🎭 Truth or Dare</div>
+                        ) : (
+                            <div className="round-badge">Round <strong>{round}</strong> / {totalRounds}</div>
+                        )}
+                        {roomCode && (
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    fontSize: 11,
+                                    color: 'var(--text-muted)',
+                                    marginLeft: 'auto',
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        maxWidth: 120,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    {roomName || 'Room'}
+                                </span>
+                                <span
+                                    style={{
+                                        padding: '2px 8px',
+                                        borderRadius: 999,
+                                        background: 'rgba(0,0,0,0.35)',
+                                        border: '1px solid var(--border)',
+                                        fontFamily: 'monospace',
+                                        letterSpacing: 1,
+                                    }}
+                                >
+                                    {roomCode}
+                                </span>
+                                <button
+                                    className="btn btn-ghost-sm"
+                                    style={{ width: 'auto', padding: '2px 6px', fontSize: 11 }}
+                                    title="Copy invite link"
+                                    onClick={() => {
+                                        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                                        const link = origin ? `${origin}/?room=${roomCode}` : roomCode;
+                                        navigator.clipboard?.writeText(link);
+                                    }}
+                                >
+                                    🔗
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="topbar-center">

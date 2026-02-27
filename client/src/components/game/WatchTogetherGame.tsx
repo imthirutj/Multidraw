@@ -22,6 +22,9 @@ export default function WatchTogetherGame() {
     const [playError, setPlayError] = React.useState<string | null>(null);
     const [showPicker, setShowPicker] = React.useState(false);
     const [isExpanded, setIsExpanded] = React.useState(false);
+    const [showYouTubePicker, setShowYouTubePicker] = React.useState(false);
+    const [ytUrlInput, setYtUrlInput] = React.useState('');
+    const [ytError, setYtError] = React.useState<string | null>(null);
 
     const formatTime = (t: number | null | undefined) => {
         if (t === null || t === undefined || !Number.isFinite(t)) return '--:--';
@@ -199,6 +202,29 @@ export default function WatchTogetherGame() {
         setShowPicker(false);
     };
 
+    const parseYouTubeId = (raw: string): string | null => {
+        try {
+            const s = raw.trim();
+            if (!s) return null;
+            // Short link
+            const shortMatch = s.match(/^https?:\/\/youtu\.be\/([^?&#/]+)/i);
+            if (shortMatch) return shortMatch[1];
+            const url = new URL(s);
+            if (url.hostname.includes('youtube.com')) {
+                const v = url.searchParams.get('v');
+                if (v) return v;
+                const match = url.pathname.match(/\/embed\/([^?&#/]+)/i);
+                if (match) return match[1];
+            }
+            return null;
+        } catch {
+            return null;
+        }
+    };
+
+    const youtubeId = watch.url ? parseYouTubeId(watch.url) : null;
+    const isYouTube = !!youtubeId;
+
     const resync = () => socket.emit('wt:sync_request');
 
     const emitPlay = () => {
@@ -279,6 +305,19 @@ export default function WatchTogetherGame() {
                     >
                         ↻
                     </button>
+                    {isHost && (
+                        <button
+                            className="btn btn-ghost-sm"
+                            style={{ width: 'auto', padding: '10px 14px' }}
+                            onClick={() => {
+                                setShowYouTubePicker(true);
+                                setYtError(null);
+                            }}
+                            title="Play a YouTube video"
+                        >
+                            ▶️ YouTube
+                        </button>
+                    )}
                 </div>
 
                 {isHost && (
@@ -321,6 +360,56 @@ export default function WatchTogetherGame() {
                                     </p>
                                 </div>
                             </div>
+                        ) : isYouTube ? (
+                            <>
+                                <iframe
+                                    title="YouTube player"
+                                    src={`https://www.youtube.com/embed/${youtubeId}?rel=0`}
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                    allowFullScreen
+                                    style={{ width: '100%', height: '100%', borderRadius: 12, border: 'none', background: '#000' }}
+                                />
+
+                                {playError && (
+                                    <div style={{ position: 'absolute', bottom: 12, left: 12, right: 12, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 12, padding: 10, fontSize: 12, color: 'rgba(255,255,255,0.92)' }}>
+                                        {playError}
+                                    </div>
+                                )}
+
+                                <div style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 999, padding: '6px 10px', fontSize: 12, color: 'rgba(255,255,255,0.92)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ opacity: 0.95 }}>YouTube</span>
+                                </div>
+
+                                {!isHost && (
+                                    <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 999, padding: '6px 10px', fontSize: 12, color: 'rgba(255,255,255,0.92)' }}>
+                                        Only host can control
+                                    </div>
+                                )}
+
+                                <button
+                                    type="button"
+                                    onClick={() => setIsExpanded(v => !v)}
+                                    title={isExpanded ? 'Minimize video' : 'Expand video'}
+                                    style={{
+                                        position: 'absolute',
+                                        right: 12,
+                                        bottom: 12,
+                                        width: 28,
+                                        height: 28,
+                                        borderRadius: '999px',
+                                        border: '1px solid rgba(255,255,255,0.25)',
+                                        background: 'rgba(0,0,0,0.55)',
+                                        color: '#fff',
+                                        fontSize: 14,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    {isExpanded ? '▾' : '▴'}
+                                </button>
+                            </>
                         ) : (
                             <>
                                 <video
@@ -409,10 +498,14 @@ export default function WatchTogetherGame() {
                 </div>
             </div>
 
-            {/* Video picker modal (all screen sizes, host only) */}
+            {/* Generic video picker modal (all screen sizes, host only) */}
             {isHost && showPicker && (
                 <div className="modal-overlay" onClick={() => setShowPicker(false)}>
-                    <div className="modal-content" style={{ maxWidth: 600, maxHeight: '80vh', display: 'flex', flexDirection: 'column', gap: 10 }} onClick={e => e.stopPropagation()}>
+                    <div
+                        className="modal-content"
+                        style={{ maxWidth: 600, maxHeight: '80vh', display: 'flex', flexDirection: 'column', gap: 10 }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <h3>Select a video</h3>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
                             <input
@@ -500,6 +593,74 @@ export default function WatchTogetherGame() {
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                             <button className="btn btn-ghost-sm" style={{ width: 'auto' }} onClick={() => setShowPicker(false)}>
                                 Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* YouTube picker modal */}
+            {isHost && showYouTubePicker && (
+                <div className="modal-overlay" onClick={() => setShowYouTubePicker(false)}>
+                    <div
+                        className="modal-content"
+                        style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: 12 }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3>Play a YouTube video</h3>
+                        <input
+                            value={ytUrlInput}
+                            onChange={e => setYtUrlInput(e.target.value)}
+                            placeholder="Paste a YouTube link (youtube.com or youtu.be)…"
+                        />
+                        {ytError && (
+                            <div className="error-banner" style={{ marginTop: 0 }}>
+                                ⚠️ {ytError}
+                            </div>
+                        )}
+                        {parseYouTubeId(ytUrlInput) && (
+                            <div
+                                style={{
+                                    border: '1px solid var(--border)',
+                                    borderRadius: 12,
+                                    overflow: 'hidden',
+                                    background: 'rgba(255,255,255,0.03)',
+                                }}
+                            >
+                                <div style={{ position: 'relative', aspectRatio: '16 / 9', background: '#000' }}>
+                                    <img
+                                        src={`https://img.youtube.com/vi/${parseYouTubeId(ytUrlInput)}/hqdefault.jpg`}
+                                        alt="YouTube thumbnail"
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                    />
+                                </div>
+                                <div style={{ padding: 10, fontSize: 13, color: 'var(--text-muted)' }}>
+                                    {ytUrlInput}
+                                </div>
+                            </div>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                            <button className="btn btn-ghost-sm" style={{ width: 'auto' }} onClick={() => setShowYouTubePicker(false)}>
+                                Cancel
+                            </button>
+                            <button
+                                className="btn btn-primary"
+                                style={{ width: 'auto' }}
+                                onClick={() => {
+                                    const id = parseYouTubeId(ytUrlInput);
+                                    if (!id) {
+                                        setYtError('Enter a valid YouTube URL');
+                                        return;
+                                    }
+                                    const full = `https://www.youtube.com/watch?v=${id}`;
+                                    setUrlInput(full);
+                                    socket.emit('wt:set_video', { url: full });
+                                    setShowYouTubePicker(false);
+                                    setYtError(null);
+                                }}
+                            >
+                                Use this video
                             </button>
                         </div>
                     </div>
