@@ -1,8 +1,9 @@
 import React from 'react';
 import { useGameStore } from '../../store/game.store';
+import socket from '../../config/socket';
 
 export default function PlayerSidebar() {
-    const { players, drawerSocketId, username } = useGameStore();
+    const { players, drawerSocketId, username, isHost, mySocketId } = useGameStore();
     const sorted = [...players].sort((a, b) => b.score - a.score);
 
     return (
@@ -24,6 +25,20 @@ export default function PlayerSidebar() {
                     </div>
                     {p.socketId === drawerSocketId && <span className="p-status">✏️</span>}
                     {p.hasGuessedCorrectly && p.socketId !== drawerSocketId && <span className="p-status">✅</span>}
+                    {isHost && p.socketId !== mySocketId && (
+                        <button
+                            className="btn btn-ghost-sm"
+                            style={{ padding: '2px 4px', margin: '0 0 0 auto', color: '#ef4444', fontSize: '0.8rem' }}
+                            title="Kick Player"
+                            onClick={() => {
+                                if (window.confirm(`Are you sure you want to kick ${p.username}?`)) {
+                                    socket.emit('room:kick', { targetSocketId: p.socketId });
+                                }
+                            }}
+                        >
+                            <span aria-hidden="true">✕</span>
+                        </button>
+                    )}
                 </div>
             ))}
         </div>

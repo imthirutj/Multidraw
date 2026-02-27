@@ -2,58 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../../store/game.store';
 import socket from '../../config/socket';
 
-const MOCK_QUESTIONS: Record<'truth' | 'dare', string[]> = {
-    truth: [
-        "What's your most embarrassing party story?",
-        "Have you ever snuck out of the house?",
-        "What's the worst text you've ever accidentally sent?",
-        "Who in this room would you least want to be trapped on a desert island with?",
-        "What's a secret you've never told anyone here?",
-        "What's the most embarrassing thing you've searched on Google recently?",
-        "Who in this room do you think is the best kisser?",
-        "What is the most scandalous thing you've ever done in public?",
-        "Have you ever had a crush on a friend's partner?",
-        "What's the biggest lie you've ever told without getting caught?",
-        "Have you ever ghosted someone after a date? Why?",
-        "What's the most illegal thing you've ever done?",
-        "Who is the last person you stalked on social media?",
-        "What is the weirdest habit you have when you're alone?",
-        "If you had to date someone in this room, who would it be?",
-        "What is your biggest regret in life so far?",
-        "Have you ever snooped through someone's phone?",
-        "What is the most awkward romantic encounter you've ever had?"
-    ],
-    dare: [
-        "Do your best impression of someone in the room.",
-        "Let someone draw a mustache on your face mentally (or carefully!).",
-        "Try to juggle three items of the group's choice.",
-        "Let the group look through your phone's photo gallery for 30 seconds.",
-        "Do exactly what the person directly across from you says for the next minute.",
-        "Post a completely random and embarrassing status on your social media right now.",
-        "Let the group send one text message to anyone in your contacts.",
-        "Show the group the last three photos hidden in your camera roll.",
-        "Do a dramatic reading of the last text message you received.",
-        "Let someone in the group playfully style your hair perfectly.",
-        "Serenade the person to your left for 30 seconds straight.",
-        "Speak in a heavy fake accent for the next 3 rounds.",
-        "Let the group blindfold you and guess what object they hand you to hold.",
-        "Give a 60-second TED talk on a completely random topic the group chooses.",
-        "Dance without any music for one full minute.",
-        "Let the person on your right playfully slap you.",
-        "Call a random acquaintance and casually tell them you love them.",
-        "Take a bite out of a raw onion or hot pepper (or the worst thing in the kitchen)."
-    ]
-};
-
 export default function BottleSpinGame() {
     const { players, mySocketId, drawerSocketId, bsSpin, isHost } = useGameStore();
     const isDrawer = mySocketId === drawerSocketId;
     const drawerName = players.find(p => p.socketId === drawerSocketId)?.username ?? 'Someone';
 
     const [isSpinning, setIsSpinning] = useState(false);
+    const [isFetching, setIsFetching] = useState(false);
     const [showTask, setShowTask] = useState(false);
     const [localRotation, setLocalRotation] = useState(0);
     const [answerInput, setAnswerInput] = useState('');
+    const [rating, setRating] = useState('pg13');
 
     const circleRadius = window.innerWidth < 600 ? 110 : 180;
 
@@ -85,22 +44,35 @@ export default function BottleSpinGame() {
         }
     }, [bsSpin, players.length]);
 
-    const handleSpinClick = () => {
-        if (!isDrawer || isSpinning || bsSpin) return;
+    const handleSpinClick = async () => {
+        if (!isDrawer || isSpinning || bsSpin || isFetching) return;
+        setIsFetching(true);
 
-        let targetIndex = Math.floor(Math.random() * players.length);
-        // Try to not land on yourself if there are other players
-        if (players.length > 1 && players[targetIndex].socketId === mySocketId) {
-            targetIndex = (targetIndex + 1) % players.length;
+        try {
+            let targetIndex = Math.floor(Math.random() * players.length);
+            // Try to not land on yourself if there are other players
+            if (players.length > 1 && players[targetIndex].socketId === mySocketId) {
+                targetIndex = (targetIndex + 1) % players.length;
+            }
+
+            const rotationOffset = 360 * (Math.floor(Math.random() * 3) + 4); // 4-6 full spins minimum
+            const type: 'truth' | 'dare' = Math.random() > 0.5 ? 'truth' : 'dare';
+
+            let promptText = "Ask a random question!";
+            const res = await fetch(`https://api.truthordarebot.xyz/v1/${type}?rating=${rating}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.question) {
+                    promptText = data.question;
+                }
+            }
+
+            socket.emit('bs:spin', { rotationOffset, targetIndex, promptType: type, promptText });
+        } catch (err) {
+            console.error("Failed to fetch Truth or Dare question", err);
+        } finally {
+            setIsFetching(false);
         }
-
-        const rotationOffset = 360 * (Math.floor(Math.random() * 3) + 4); // 4-6 full spins minimum
-        const type: 'truth' | 'dare' = Math.random() > 0.5 ? 'truth' : 'dare';
-
-        const arr = MOCK_QUESTIONS[type];
-        const promptText = arr[Math.floor(Math.random() * arr.length)];
-
-        socket.emit('bs:spin', { rotationOffset, targetIndex, promptType: type, promptText });
     };
 
     const handleResolve = (action: 'complete' | 'skip' | 'refuse') => {
@@ -173,6 +145,21 @@ export default function BottleSpinGame() {
                             >
                                 <span style={{ whiteSpace: 'nowrap' }}>{p.username}</span>
                                 <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>{p.score} pts</span>
+                                {isHost && p.socketId !== mySocketId && (
+                                    <button
+                                        className="btn btn-ghost-sm"
+                                        style={{ position: 'absolute', top: -10, right: -10, padding: '2px 6px', background: '#ef4444', color: '#fff', fontSize: '0.7rem', border: '2px solid var(--surface-light)', borderRadius: '50%' }}
+                                        title="Kick Player"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (window.confirm(`Are you sure you want to kick ${p.username}?`)) {
+                                                socket.emit('room:kick', { targetSocketId: p.socketId });
+                                            }
+                                        }}
+                                    >
+                                        ✕
+                                    </button>
+                                )}
                             </div>
                         );
                     })}
@@ -203,12 +190,23 @@ export default function BottleSpinGame() {
                 {!bsSpin ? (
                     <div style={{ textAlign: 'center' }}>
                         {isDrawer ? (
-                            <>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                 <h2 style={{ marginBottom: 15 }}>It's your turn to spin!</h2>
-                                <button className="btn btn-primary btn-lg" onClick={handleSpinClick} style={{ padding: '15px 40px', fontSize: '1.2rem', background: 'linear-gradient(135deg, #14b8a6, #0f766e)' }}>
-                                    SPIN THE BOTTLE 🍾
+                                <select
+                                    className="input"
+                                    style={{ marginBottom: 15, padding: '8px 12px', borderRadius: '8px', maxWidth: 200 }}
+                                    value={rating}
+                                    onChange={(e) => setRating(e.target.value)}
+                                    disabled={isFetching}
+                                >
+                                    <option value="pg">PG (Family Friendly)</option>
+                                    <option value="pg13">PG-13 (Fun & Flirty)</option>
+                                    <option value="r">R (Spicy 18+)</option>
+                                </select>
+                                <button className="btn btn-primary btn-lg" onClick={handleSpinClick} disabled={isFetching} style={{ padding: '15px 40px', fontSize: '1.2rem', background: 'linear-gradient(135deg, #14b8a6, #0f766e)' }}>
+                                    {isFetching ? 'PREPARING...' : 'SPIN THE BOTTLE 🍾'}
                                 </button>
-                            </>
+                            </div>
                         ) : (
                             <h2 style={{ color: 'var(--text-muted)' }}>Waiting for {drawerName} to spin the bottle...</h2>
                         )}

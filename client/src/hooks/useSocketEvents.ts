@@ -71,6 +71,12 @@ export function useSocketEvents(): void {
             window.location.reload(); // Quickest way to fully detach and reset state safely
         });
 
+        socket.on('room:destroyed', () => {
+            alert('The room has been deleted by the host.');
+            useGameStore.getState().reset();
+            window.location.reload();
+        });
+
         socket.on('game:starting', () => {
             store.setScreen('game');
             store.setRoom({ chatMessages: [] });

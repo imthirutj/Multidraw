@@ -201,6 +201,19 @@ export default function GameScreen() {
                                 👑 Request Host
                             </button>
                         )}
+                        {isHost && (
+                            <button
+                                className="btn btn-ghost-sm"
+                                style={{ width: 'auto', padding: '6px 10px', fontSize: 11, color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                                onClick={() => {
+                                    if (window.confirm("Are you sure you want to permanently delete this room? Everyone will be kicked out.")) {
+                                        socket.emit('room:delete');
+                                    }
+                                }}
+                            >
+                                💣 Delete Room
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

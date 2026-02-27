@@ -217,7 +217,8 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         io.to(targetSocketId).emit('room:kicked');
 
         // Force them to leave the Socket.IO room so they stop receiving broadcasts
-        const targetSocket = io.sockets.sockets.get(targetSocketId);
+        const socks = await io.in(roomCode).fetchSockets();
+        const targetSocket = socks.find(s => s.id === targetSocketId);
         if (targetSocket) {
             targetSocket.leave(roomCode);
             targetSocket.data.roomCode = null;
@@ -319,6 +320,7 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         gameService.endRound(roomCode);
     });
 
+
     socket.on('webrtc:join', () => {
         const { roomCode } = socket.data;
         if (!roomCode) return;
@@ -343,15 +345,10 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         io.to(roomCode).emit('error', { message: 'The host has deleted the room.' });
 
         // Disconnect all sockets from the Socket.IO room
-        const clients = io.sockets.adapter.rooms.get(roomCode);
-        if (clients) {
-            for (const clientId of clients) {
-                const clientSocket = io.sockets.sockets.get(clientId);
-                if (clientSocket) {
-                    clientSocket.leave(roomCode);
-                    clientSocket.data.roomCode = null;
-                }
-            }
+        const socks = await io.in(roomCode).fetchSockets();
+        for (const s of socks) {
+            s.leave(roomCode);
+            if (s.data) s.data.roomCode = null;
         }
 
         // We can just wipe its data from the repository
