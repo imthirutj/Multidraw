@@ -172,8 +172,8 @@ export default function GameScreen() {
                 </div>
 
                 <div className="topbar-right">
-                    {!isWatchTogether && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {!isWatchTogether && (
                             <div className="timer-ring">
                                 <svg viewBox="0 0 36 36" className="circular-chart">
                                     <path className="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
@@ -185,17 +185,17 @@ export default function GameScreen() {
                                 </svg>
                                 <span className="timer-num">{timeLeft}</span>
                             </div>
-                            {!isHost && (
-                                <button
-                                    className="btn btn-ghost-sm"
-                                    style={{ width: 'auto', padding: '6px 10px', fontSize: 11 }}
-                                    onClick={() => socket.emit('host:request')}
-                                >
-                                    👑 Request Host
-                                </button>
-                            )}
-                        </div>
-                    )}
+                        )}
+                        {!isHost && (
+                            <button
+                                className="btn btn-ghost-sm"
+                                style={{ width: 'auto', padding: '6px 10px', fontSize: 11 }}
+                                onClick={() => socket.emit('host:request')}
+                            >
+                                👑 Request Host
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 

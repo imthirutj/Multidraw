@@ -288,6 +288,21 @@ export default function WatchTogetherGame() {
                                 placeholder="Paste a direct video URL (http/https)…"
                                 style={{ flex: 1, minWidth: 220 }}
                             />
+                            <button
+                                className="btn btn-ghost-sm"
+                                style={{ width: 'auto', padding: '10px 10px' }}
+                                title="Paste from clipboard"
+                                onClick={async () => {
+                                    try {
+                                        const text = await navigator.clipboard.readText();
+                                        if (text) setUrlInput(text);
+                                    } catch {
+                                        // silently ignore if not permitted
+                                    }
+                                }}
+                            >
+                                📋
+                            </button>
                             <button className="btn btn-primary" style={{ width: 'auto', padding: '10px 16px' }} onClick={setVideo}>
                                 Set Video
                             </button>
@@ -328,6 +343,21 @@ export default function WatchTogetherGame() {
                             placeholder="Or paste a page URL to find videos on it…"
                             style={{ flex: 1, minWidth: 220 }}
                         />
+                        <button
+                            className="btn btn-ghost-sm"
+                            style={{ width: 'auto', padding: '10px 10px' }}
+                            title="Paste from clipboard"
+                            onClick={async () => {
+                                try {
+                                    const text = await navigator.clipboard.readText();
+                                    if (text) setPageUrlInput(text);
+                                } catch {
+                                    // ignore if not permitted
+                                }
+                            }}
+                        >
+                            📋
+                        </button>
                         <button
                             className="btn btn-ghost-sm"
                             style={{ width: 'auto' }}

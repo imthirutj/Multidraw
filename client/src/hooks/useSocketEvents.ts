@@ -36,9 +36,11 @@ export function useSocketEvents(): void {
             store.setPlayers(players);
             store.addChat({ type: 'system', text: `${username} left` });
 
-            if (newHostId && newHostId === socket.id && !useGameStore.getState().isHost) {
-                store.setRoom({ isHost: true });
-                store.addChat({ type: 'system', text: 'You are now the room host! 👑' });
+            if (newHostId) {
+                store.setRoom({ isHost: newHostId === socket.id });
+                if (newHostId === socket.id) {
+                    store.addChat({ type: 'system', text: 'You are now the room host! 👑' });
+                }
             }
         });
 
