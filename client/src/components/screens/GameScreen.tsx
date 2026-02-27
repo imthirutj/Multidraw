@@ -12,7 +12,7 @@ import socket from '../../config/socket';
 const TOTAL_TIME_REF = { current: 80 };
 
 export default function GameScreen() {
-    const { round, totalRounds, hint, timeLeft, roundDuration, isDrawer, drawerSocketId, players, currentWord, mySocketId, gameType } = useGameStore();
+    const { round, totalRounds, hint, timeLeft, roundDuration, isDrawer, drawerSocketId, players, currentWord, mySocketId, gameType, isHost, hostTransferRequestedBy } = useGameStore();
     const isWatchTogether = gameType === 'watch_together';
     const isTruthOrDare = gameType === 'truth_or_dare';
 
@@ -124,20 +124,47 @@ export default function GameScreen() {
 
                 <div className="topbar-right">
                     {!isWatchTogether && (
-                        <div className="timer-ring">
-                            <svg viewBox="0 0 36 36" className="circular-chart">
-                                <path className="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                <path
-                                    className={`circle ${isUrgent ? 'urgent' : ''}`}
-                                    strokeDasharray={`${pct}, 100`}
-                                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                />
-                            </svg>
-                            <span className="timer-num">{timeLeft}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div className="timer-ring">
+                                <svg viewBox="0 0 36 36" className="circular-chart">
+                                    <path className="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    <path
+                                        className={`circle ${isUrgent ? 'urgent' : ''}`}
+                                        strokeDasharray={`${pct}, 100`}
+                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                    />
+                                </svg>
+                                <span className="timer-num">{timeLeft}</span>
+                            </div>
+                            {!isHost && (
+                                <button
+                                    className="btn btn-ghost-sm"
+                                    style={{ width: 'auto', padding: '6px 10px', fontSize: 11 }}
+                                    onClick={() => socket.emit('host:request')}
+                                >
+                                    👑 Request Host
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
             </div>
+
+            {hostTransferRequestedBy && isHost && (
+                <div style={{ padding: '6px 14px', textAlign: 'center', background: 'rgba(249, 200, 70, 0.12)', borderBottom: '1px solid rgba(249, 200, 70, 0.35)', fontSize: 12 }}>
+                    <span style={{ marginRight: 8 }}>⚠️ {hostTransferRequestedBy} requested to become host.</span>
+                    <button
+                        className="btn btn-ghost-sm"
+                        style={{ width: 'auto', padding: '4px 10px', fontSize: 11 }}
+                        onClick={() => {
+                            socket.emit('host:respond');
+                            useGameStore.getState().setRoom({ hostTransferRequestedBy: null });
+                        }}
+                    >
+                        I'm active
+                    </button>
+                </div>
+            )}
 
             {/* Main Body */}
             {isWatchTogether ? (
