@@ -52,14 +52,31 @@ export default function LobbyScreen() {
         setIdentity(nameToUse, avatar);
 
         try {
+            const fallbackRoomName =
+                gameType === 'watch_together'
+                    ? 'Watch Room'
+                    : gameType === 'truth_or_dare'
+                        ? 'Truth or Dare Room'
+                        : 'Drawing Room';
+
             const res = await fetch('/api/rooms', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    roomName: roomName || 'Drawing Room',
+                    roomName: roomName || fallbackRoomName,
                     gameType,
-                    totalRounds: gameType === 'truth_or_dare' ? 20 : (Number(totalRounds) || 3),
-                    roundDuration: gameType === 'truth_or_dare' ? 300 : Math.round((Number(roundDuration) || 1.5) * 60)
+                    totalRounds:
+                        gameType === 'truth_or_dare'
+                            ? 20
+                            : gameType === 'watch_together'
+                                ? 1
+                                : (Number(totalRounds) || 3),
+                    roundDuration:
+                        gameType === 'truth_or_dare'
+                            ? 300
+                            : gameType === 'watch_together'
+                                ? 3600
+                                : Math.round((Number(roundDuration) || 1.5) * 60)
                 }),
             });
             const data = await res.json();
@@ -129,8 +146,13 @@ export default function LobbyScreen() {
                                         )}
                                     </div>
                                     <div className="room-item-meta">
-                                        🎮 {r.gameType === 'truth_or_dare' ? 'Truth or Dare' : 'Drawing'} &nbsp;|&nbsp;
-                                        👥 {r.players.length}/{r.maxPlayers} &nbsp;|&nbsp; 🔄 {r.totalRounds} rounds
+                                        🎮 {r.gameType === 'truth_or_dare' ? 'Truth or Dare' : r.gameType === 'watch_together' ? 'Watch Together' : 'Drawing'} &nbsp;|&nbsp;
+                                        👥 {r.players.length}/{r.maxPlayers}
+                                        {r.gameType !== 'watch_together' && (
+                                            <>
+                                                &nbsp;|&nbsp; 🔄 {r.totalRounds} rounds
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                                 <span className="room-code-mono">{r.roomCode}</span>
@@ -153,9 +175,10 @@ export default function LobbyScreen() {
                             <select value={gameType} onChange={e => setGameType(e.target.value)}>
                                 <option value="drawing">🎨 Draw & Guess</option>
                                 <option value="truth_or_dare">🎭 Truth or Dare</option>
+                                <option value="watch_together">🎬 Watch Together</option>
                             </select>
                         </div>
-                        {gameType !== 'truth_or_dare' && (
+                        {gameType !== 'truth_or_dare' && gameType !== 'watch_together' && (
                             <div className="form-row">
                                 <div className="form-group">
                                     <label>Rounds</label>

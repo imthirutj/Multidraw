@@ -44,6 +44,14 @@ export interface DrawUndoPayload { dataURL: string; }
 export interface CanvasRespondPayload { dataURL: string; toSocketId: string; }
 export interface CanvasSyncPayload { dataURL: string; }
 
+export interface WatchTogetherStatePayload {
+    url: string | null;
+    isPlaying: boolean;
+    currentTime: number;
+    updatedAtMs: number;
+    updatedBy?: string;
+}
+
 export interface RoomListItem {
     roomCode: string;
     roomName: string;

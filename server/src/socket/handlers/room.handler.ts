@@ -2,13 +2,14 @@ import type { Socket, Server } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from '../../types/game.types';
 import { RoomRepository } from '../../repositories/room.repository';
 import { GameService } from '../../services/game.service';
+import { WatchTogetherService } from '../../services/watch.service';
 
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
 const hostTransferTimeouts = new Map<string, NodeJS.Timeout>();
 
-export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameService: GameService): void {
+export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameService: GameService, watchService: WatchTogetherService): void {
 
     socket.on('room:join', async ({ roomCode, username, avatar }) => {
         const room = await RoomRepository.findByCode(roomCode);
@@ -61,27 +62,34 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         socket.to(roomCode).emit('player:joined', { players, username });
         io.to(roomCode).emit('chat:message', { type: 'system', text: `${username} joined the room` });
 
+        if (room.gameType === 'watch_together') {
+            socket.emit('wt:state', watchService.getSnapshot(roomCode));
+        }
+
         // If joining mid-game, explicitly sync them into the current round instantly
         if (room.status === 'playing') {
             socket.emit('game:starting');
-            const timeLeft = gameService.getTimeLeft(roomCode) || room.roundDuration;
-            const revealed = gameService.getRevealedCount(roomCode);
-            const drawerDetails = players.find(p => p.socketId === updatedCurrentDrawer);
+            if (room.gameType !== 'watch_together') {
+                const timeLeft = gameService.getTimeLeft(roomCode) || room.roundDuration;
+                const revealed = gameService.getRevealedCount(roomCode);
+                const drawerDetails = players.find(p => p.socketId === updatedCurrentDrawer);
 
-            import('../../utils/words').then(({ getRevealedHint }) => {
-                socket.emit('round:start', {
-                    round: room.currentRound,
-                    totalRounds: room.totalRounds,
-                    drawerSocketId: updatedCurrentDrawer,
-                    drawerName: drawerDetails?.username || 'Unknown',
-                    hint: room.currentWord ? getRevealedHint(room.currentWord, revealed) : '',
-                    timeLeft
+                import('../../utils/words').then(({ getRevealedHint }) => {
+                    socket.emit('round:start', {
+                        round: room.currentRound,
+                        totalRounds: room.totalRounds,
+                        drawerSocketId: updatedCurrentDrawer,
+                        drawerName: drawerDetails?.username || 'Unknown',
+                        hint: room.currentWord ? getRevealedHint(room.currentWord, revealed) : '',
+                        timeLeft
+                    });
                 });
-            });
 
-            // Request full canvas sync from the current drawer
-            if (updatedCurrentDrawer) {
-                io.to(updatedCurrentDrawer).emit('canvas:request', { requesterSocketId: socket.id });
+                // Request full canvas sync from the current drawer
+                if (updatedCurrentDrawer) {
+                    io.to(updatedCurrentDrawer).emit('canvas:request', { requesterSocketId: socket.id });
+                }
+            } else {
             }
         }
     });
@@ -92,10 +100,19 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         const room = await RoomRepository.findByCode(roomCode);
         if (!room) return;
         if (room.hostSocketId !== socket.id) return socket.emit('error', { message: 'Only the host can start' });
-        if (room.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players' });
+        if (room.gameType !== 'watch_together' && room.players.length < 2) {
+            return socket.emit('error', { message: 'Need at least 2 players' });
+        }
 
         await RoomRepository.save(roomCode, { status: 'playing', currentRound: 0 });
         io.to(roomCode).emit('game:starting');
+
+        if (room.gameType === 'watch_together') {
+            io.to(roomCode).emit('wt:state', watchService.getSnapshot(roomCode));
+            io.to(roomCode).emit('chat:message', { type: 'system', text: '🎬 Watch Together session started.' });
+            return;
+        }
+
         setTimeout(() => gameService.startRound(roomCode), 2_000);
     });
 
@@ -224,6 +241,7 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
 
         // Ensure we stop the game timer
         gameService.clearTimer(roomCode);
+        watchService.clearRoom(roomCode);
 
         // Notify everyone that the room is gone
         io.to(roomCode).emit('error', { message: 'The host has deleted the room.' });
@@ -261,21 +279,28 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         io.to(roomCode).emit('player:left', { players, username, newHostId: hostSocketId });
         io.to(roomCode).emit('chat:message', { type: 'system', text: `${username} left the room` });
 
-        if (room.status === 'playing' && room.currentDrawer === socket.id) {
-            io.to(roomCode).emit('chat:message', { type: 'system', text: 'Drawer left — skipping round…' });
-            setTimeout(() => gameService.endRound(roomCode), 1_500);
-        }
+        if (room.gameType !== 'watch_together') {
+            if (room.status === 'playing' && room.currentDrawer === socket.id) {
+                io.to(roomCode).emit('chat:message', { type: 'system', text: 'Drawer left — skipping round…' });
+                setTimeout(() => gameService.endRound(roomCode), 1_500);
+            }
 
-        if (room.status === 'playing' && room.currentDrawer !== socket.id) {
-            const nonDrawers = players.filter(p => p.socketId !== room.currentDrawer);
-            if (nonDrawers.length > 0 && nonDrawers.every(p => p.hasGuessedCorrectly)) {
-                setTimeout(() => gameService.endRound(roomCode), 1500);
+            if (room.status === 'playing' && room.currentDrawer !== socket.id) {
+                const nonDrawers = players.filter(p => p.socketId !== room.currentDrawer);
+                if (nonDrawers.length > 0 && nonDrawers.every(p => p.hasGuessedCorrectly)) {
+                    setTimeout(() => gameService.endRound(roomCode), 1500);
+                }
             }
         }
 
         if (hostTransferTimeouts.has(roomCode)) {
             clearTimeout(hostTransferTimeouts.get(roomCode));
             hostTransferTimeouts.delete(roomCode);
+        }
+
+        if (players.length === 0) {
+            gameService.clearTimer(roomCode);
+            watchService.clearRoom(roomCode);
         }
     });
 }

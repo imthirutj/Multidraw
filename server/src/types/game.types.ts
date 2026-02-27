@@ -62,6 +62,13 @@ export interface ClientToServerEvents {
 
     'webrtc:join': () => void;
     'webrtc:signal': (payload: { to: string; type: string; data: any }) => void;
+
+    // Watch Together
+    'wt:set_video': (payload: { url: string }) => void;
+    'wt:play': (payload: { time: number }) => void;
+    'wt:pause': (payload: { time: number }) => void;
+    'wt:seek': (payload: { time: number }) => void;
+    'wt:sync_request': () => void;
 }
 
 // ─── Socket Events: Server → Client ──────────────────────────────────────────
@@ -101,6 +108,9 @@ export interface ServerToClientEvents {
 
     'webrtc:user_joined': (payload: { socketId: string }) => void;
     'webrtc:signal': (payload: { from: string; type: string; data: any }) => void;
+
+    // Watch Together
+    'wt:state': (payload: WatchTogetherStatePayload) => void;
 
     error: (payload: { message: string }) => void;
 }
@@ -157,6 +167,15 @@ export interface DrawFillPayload {
 
 export interface DrawUndoPayload {
     dataURL: string;
+}
+
+// ─── Watch Together ───────────────────────────────────────────────────────────
+export interface WatchTogetherStatePayload {
+    url: string | null;
+    isPlaying: boolean;
+    currentTime: number;
+    updatedAtMs: number;
+    updatedBy?: string;
 }
 
 // ─── API ──────────────────────────────────────────────────────────────────────

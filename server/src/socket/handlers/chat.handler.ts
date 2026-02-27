@@ -17,6 +17,26 @@ export function registerChatHandlers(io: IoServer, socket: AppSocket, gameServic
         const player = room.players.find(p => p.socketId === socket.id);
         if (!player || player.hasGuessedCorrectly) return;
 
+        // Non-drawing modes use chat only (no guessing/scoring).
+        if (room.gameType === 'watch_together' || room.gameType === 'truth_or_dare') {
+            io.to(roomCode).emit('chat:message', {
+                type: 'chat',
+                username,
+                text: `${username}: ${message}`,
+            });
+            return;
+        }
+
+        // If a drawing round hasn't started yet, treat it as normal chat.
+        if (!room.currentWord || !room.currentDrawer) {
+            io.to(roomCode).emit('chat:message', {
+                type: 'chat',
+                username,
+                text: `${username}: ${message}`,
+            });
+            return;
+        }
+
         // Drawer can chat, but cannot guess the word.
         if (socket.id === room.currentDrawer) {
             io.to(roomCode).emit('chat:message', {

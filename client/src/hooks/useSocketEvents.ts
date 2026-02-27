@@ -123,6 +123,10 @@ export function useSocketEvents(): void {
             store.setTdChoice({ choice, prompt });
         });
 
+        socket.on('wt:state', payload => {
+            store.setWatchState(payload);
+        });
+
         socket.on('error', ({ message }) => {
             store.addChat({ type: 'system', text: `⚠️ ${message}` });
         });

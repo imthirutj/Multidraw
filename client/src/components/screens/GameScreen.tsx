@@ -5,6 +5,7 @@ import DrawToolbar from '../game/DrawToolbar';
 import PlayerSidebar from '../game/PlayerSidebar';
 import Chat from '../game/Chat';
 import TruthOrDareGame from '../game/TruthOrDareGame';
+import WatchTogetherGame from '../game/WatchTogetherGame';
 import type { DrawTool } from '../../types/game.types';
 import socket from '../../config/socket';
 
@@ -12,6 +13,7 @@ const TOTAL_TIME_REF = { current: 80 };
 
 export default function GameScreen() {
     const { round, totalRounds, hint, timeLeft, roundDuration, isDrawer, drawerSocketId, players, currentWord, mySocketId, gameType } = useGameStore();
+    const isWatchTogether = gameType === 'watch_together';
 
     const me = players.find(p => p.socketId === mySocketId);
     const hasGuessed = me?.hasGuessedCorrectly;
@@ -67,11 +69,17 @@ export default function GameScreen() {
             <div className="game-topbar">
                 <div className="topbar-left">
                     <span className="logo-sm">🎨 MultiDraw</span>
-                    <div className="round-badge">Round <strong>{round}</strong> / {totalRounds}</div>
+                    {isWatchTogether ? (
+                        <div className="round-badge">🎬 Watch Together</div>
+                    ) : (
+                        <div className="round-badge">Round <strong>{round}</strong> / {totalRounds}</div>
+                    )}
                 </div>
 
                 <div className="topbar-center">
-                    {gameType === 'truth_or_dare' ? (
+                    {isWatchTogether ? (
+                        <div className="word-display">🎬 Watch Together</div>
+                    ) : gameType === 'truth_or_dare' ? (
                         <div className="word-display">🎭 Truth or Dare</div>
                     ) : isDrawer || hasGuessed ? (
                         <div className={`word-display ${hasGuessed ? 'correct-word' : ''}`}>
@@ -107,27 +115,31 @@ export default function GameScreen() {
                             />
                         </label>
                     )}
-                    {isDrawer && gameType !== 'truth_or_dare' && <div className="drawing-tag">✏️ You are drawing!</div>}
-                    {isDrawer && gameType === 'truth_or_dare' && <div className="drawing-tag">✅ It's your turn!</div>}
+                    {!isWatchTogether && isDrawer && gameType !== 'truth_or_dare' && <div className="drawing-tag">✏️ You are drawing!</div>}
+                    {!isWatchTogether && isDrawer && gameType === 'truth_or_dare' && <div className="drawing-tag">✅ It's your turn!</div>}
                 </div>
 
                 <div className="topbar-right">
-                    <div className="timer-ring">
-                        <svg viewBox="0 0 36 36" className="circular-chart">
-                            <path className="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                            <path
-                                className={`circle ${isUrgent ? 'urgent' : ''}`}
-                                strokeDasharray={`${pct}, 100`}
-                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                            />
-                        </svg>
-                        <span className="timer-num">{timeLeft}</span>
-                    </div>
+                    {!isWatchTogether && (
+                        <div className="timer-ring">
+                            <svg viewBox="0 0 36 36" className="circular-chart">
+                                <path className="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path
+                                    className={`circle ${isUrgent ? 'urgent' : ''}`}
+                                    strokeDasharray={`${pct}, 100`}
+                                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                />
+                            </svg>
+                            <span className="timer-num">{timeLeft}</span>
+                        </div>
+                    )}
                 </div>
             </div>
 
             {/* Main Body */}
-            {gameType === 'truth_or_dare' ? (
+            {isWatchTogether ? (
+                <WatchTogetherGame />
+            ) : gameType === 'truth_or_dare' ? (
                 <TruthOrDareGame />
             ) : (
                 <div className="game-body">

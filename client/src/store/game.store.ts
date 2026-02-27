@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Player, ChatMessage, Screen, GameStatus } from '../types/game.types';
+import type { Player, ChatMessage, Screen, GameStatus, WatchTogetherStatePayload } from '../types/game.types';
 
 interface GameState {
     // Identity
@@ -28,6 +28,10 @@ interface GameState {
     timeLeft: number;
     tdChoice: { choice: 'truth' | 'dare'; prompt: string } | null;
 
+    // Watch Together
+    watch: WatchTogetherStatePayload;
+    watchNonce: number; // increments on each incoming watch sync
+
     // UI
     screen: Screen;
     chatMessages: ChatMessage[];
@@ -44,6 +48,7 @@ interface GameState {
     setTimeLeft: (t: number) => void;
     setCurrentWord: (w: string) => void;
     setTdChoice: (val: GameState['tdChoice']) => void;
+    setWatchState: (val: WatchTogetherStatePayload) => void;
     addChat: (msg: ChatMessage) => void;
     setLeaderboard: (lb: Player[]) => void;
     reset: () => void;
@@ -70,6 +75,8 @@ const initialState = {
     hint: '',
     timeLeft: 80,
     tdChoice: null as GameState['tdChoice'],
+    watch: { url: null, isPlaying: false, currentTime: 0, updatedAtMs: 0 } as WatchTogetherStatePayload,
+    watchNonce: 0,
     screen: 'lobby' as Screen,
     chatMessages: [] as ChatMessage[],
     leaderboard: [] as Player[],
@@ -88,6 +95,7 @@ export const useGameStore = create<GameState>(set => ({
     setTimeLeft: timeLeft => set({ timeLeft }),
     setCurrentWord: currentWord => set({ currentWord }),
     setTdChoice: tdChoice => set({ tdChoice }),
+    setWatchState: watch => set(s => ({ watch, watchNonce: s.watchNonce + 1 })),
     addChat: msg =>
         set(s => ({ chatMessages: [...s.chatMessages.slice(-200), msg] })),
     setLeaderboard: leaderboard => set({ leaderboard }),
