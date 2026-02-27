@@ -100,11 +100,17 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
                     ?? { username };
 
                 if (room.gameType === 'truth_or_dare') {
+                    const drawerIdx = orderedPlayers.findIndex(p => p.socketId === updatedCurrentDrawer);
+                    const answererIdx = drawerIdx >= 0 && orderedPlayers.length > 1 ? (drawerIdx + 1) % orderedPlayers.length : 0;
+                    const answererDetails = orderedPlayers[answererIdx] ?? { username: '', socketId: '' };
+
                     socket.emit('round:start', {
                         round: room.currentRound,
                         totalRounds: room.totalRounds,
                         drawerSocketId: updatedCurrentDrawer,
                         drawerName: drawerDetails.username,
+                        answererSocketId: answererDetails.socketId,
+                        answererName: answererDetails.username,
                         hint: '',
                         timeLeft
                     });
@@ -236,14 +242,21 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         const { roomCode } = socket.data;
         if (!roomCode) return;
         const room = await RoomRepository.findByCode(roomCode);
-        if (!room || room.status !== 'playing' || room.currentDrawer !== socket.id) return;
+        if (!room || room.status !== 'playing') return;
 
-        import('../../utils/words').then(({ getRandomTruth, getRandomDare }) => {
-            const prompt = choice === 'truth' ? getRandomTruth() : getRandomDare();
-            const playerName = room.players.find(p => p.socketId === socket.id)?.username || 'Someone';
-            io.to(roomCode).emit('td:chosen', { choice, prompt });
-            io.to(roomCode).emit('chat:message', { type: 'system', text: `${playerName} chose ${choice.toUpperCase()}! 🎭` });
-        });
+        const playerName = room.players.find(p => p.socketId === socket.id)?.username || 'Someone';
+        io.to(roomCode).emit('td:chosen', { choice });
+        io.to(roomCode).emit('chat:message', { type: 'system', text: `${playerName} chose ${choice.toUpperCase()}! 🎭 Waiting for prompt...` });
+    });
+
+    socket.on('td:submit_prompt', async ({ prompt }) => {
+        const { roomCode } = socket.data;
+        if (!roomCode) return;
+        const room = await RoomRepository.findByCode(roomCode);
+        if (!room || room.status !== 'playing') return;
+
+        io.to(roomCode).emit('td:prompt_ready', { prompt });
+        io.to(roomCode).emit('chat:message', { type: 'system', text: `Question: ${prompt}` });
     });
 
     socket.on('td:next_turn', async () => {

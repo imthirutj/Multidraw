@@ -82,6 +82,8 @@ export function useSocketEvents(): void {
                 totalRounds: payload.totalRounds,
                 drawerSocketId: payload.drawerSocketId,
                 drawerName: payload.drawerName,
+                answererSocketId: payload.answererSocketId || '',
+                answererName: payload.answererName || '',
                 isDrawer: payload.drawerSocketId === socket.id,
                 hint: payload.hint,
                 timeLeft: payload.timeLeft,
@@ -126,6 +128,13 @@ export function useSocketEvents(): void {
 
         socket.on('td:chosen', ({ choice, prompt }) => {
             store.setTdChoice({ choice, prompt });
+        });
+
+        socket.on('td:prompt_ready', ({ prompt }) => {
+            const currentChoice = useGameStore.getState().tdChoice;
+            if (currentChoice) {
+                store.setTdChoice({ ...currentChoice, prompt });
+            }
         });
 
         socket.on('wt:state', payload => {

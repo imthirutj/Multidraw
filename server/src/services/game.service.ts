@@ -29,6 +29,9 @@ export class GameService {
 
         // Truth or Dare uses the round system only to rotate the active player.
         if (room.gameType === 'truth_or_dare') {
+            const answererIndex = room.players.length > 1 ? (room.currentRound + 1) % room.players.length : drawerIndex;
+            const answerer = room.players[answererIndex];
+
             const updatedRoom = await RoomRepository.save(roomCode, {
                 players,
                 currentWord: '',
@@ -51,6 +54,8 @@ export class GameService {
                 totalRounds: updatedRoom.totalRounds,
                 drawerSocketId: drawer.socketId,
                 drawerName: drawer.username,
+                answererSocketId: answerer.socketId,
+                answererName: answerer.username,
                 hint: '',
                 timeLeft: updatedRoom.roundDuration,
             });

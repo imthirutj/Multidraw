@@ -23,10 +23,12 @@ interface GameState {
     isDrawer: boolean;
     drawerSocketId: string;
     drawerName: string;
+    answererSocketId: string;
+    answererName: string;
     currentWord: string;   // only set for drawer
     hint: string;
     timeLeft: number;
-    tdChoice: { choice: 'truth' | 'dare'; prompt: string } | null;
+    tdChoice: { choice: 'truth' | 'dare'; prompt?: string } | null;
 
     // Watch Together
     watch: WatchTogetherStatePayload;
@@ -71,6 +73,8 @@ const initialState = {
     isDrawer: false,
     drawerSocketId: '',
     drawerName: '',
+    answererSocketId: '',
+    answererName: '',
     currentWord: '',
     hint: '',
     timeLeft: 80,

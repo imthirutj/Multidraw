@@ -58,6 +58,7 @@ export interface ClientToServerEvents {
     'room:delete': () => void;
     'canvas:respond': (payload: { dataURL: string; toSocketId: string }) => void;
     'td:choose': (payload: { choice: 'truth' | 'dare' }) => void;
+    'td:submit_prompt': (payload: { prompt: string }) => void;
     'td:next_turn': () => void;
 
     'webrtc:join': () => void;
@@ -104,7 +105,8 @@ export interface ServerToClientEvents {
     'canvas:request': (payload: { requesterSocketId: string }) => void;
     'canvas:sync': (payload: { dataURL: string }) => void;
 
-    'td:chosen': (payload: { choice: 'truth' | 'dare'; prompt: string }) => void;
+    'td:chosen': (payload: { choice: 'truth' | 'dare'; prompt?: string }) => void;
+    'td:prompt_ready': (payload: { prompt: string }) => void;
 
     'webrtc:user_joined': (payload: { socketId: string }) => void;
     'webrtc:signal': (payload: { from: string; type: string; data: any }) => void;
@@ -132,6 +134,8 @@ export interface RoundStartPayload {
     totalRounds: number;
     drawerSocketId: string;
     drawerName: string;
+    answererSocketId?: string;
+    answererName?: string;
     hint: string;
     timeLeft: number;
 }
