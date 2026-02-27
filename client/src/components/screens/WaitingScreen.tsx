@@ -28,6 +28,7 @@ export default function WaitingScreen() {
     }, [hostTransferRequestedBy]);
 
     const copyCode = () => navigator.clipboard.writeText(roomCode);
+    const copyLink = () => navigator.clipboard.writeText(`${window.location.origin}/?room=${roomCode}`);
 
     const handleStart = () => socket.emit('game:start');
 
@@ -47,6 +48,7 @@ export default function WaitingScreen() {
                             <span>Code:</span>
                             <strong className="code-text">{roomCode}</strong>
                             <button onClick={copyCode} title="Copy">📋</button>
+                            <button onClick={copyLink} title="Copy invite link">🔗</button>
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: '10px' }}>

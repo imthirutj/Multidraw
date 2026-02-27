@@ -182,6 +182,7 @@ export interface WatchTogetherStatePayload {
 export interface CreateRoomBody {
     roomName?: string;
     gameType?: string;
+    isPublic?: boolean;
     totalRounds?: number;
     roundDuration?: number;
     maxPlayers?: number;
@@ -191,6 +192,7 @@ export interface RoomListItem {
     roomCode: string;
     roomName: string;
     gameType: string;
+    isPublic: boolean;
     players: Pick<Player, 'username'>[];
     maxPlayers: number;
     totalRounds: number;

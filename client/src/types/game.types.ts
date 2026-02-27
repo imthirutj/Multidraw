@@ -56,6 +56,7 @@ export interface RoomListItem {
     roomCode: string;
     roomName: string;
     gameType: string;
+    isPublic?: boolean;
     players: { username: string }[];
     maxPlayers: number;
     totalRounds: number;

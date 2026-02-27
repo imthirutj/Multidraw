@@ -7,6 +7,7 @@ export interface GameRoomDoc {
     roomCode: string;
     roomName: string;
     gameType: string;
+    isPublic: boolean;
     players: Player[];
     status: GameStatus;
     currentRound: number;
@@ -35,9 +36,9 @@ export const RoomRepository = {
         return room ? cast(room) : null;
     },
 
-    async findWaiting(): Promise<GameRoomDoc[]> {
+    async findWaitingPublic(): Promise<GameRoomDoc[]> {
         const rooms = await prisma.gameRoom.findMany({
-            where: { status: { in: ['waiting', 'playing'] } }
+            where: { status: { in: ['waiting', 'playing'] }, isPublic: true }
         });
         return rooms.map(cast);
     },
@@ -46,6 +47,7 @@ export const RoomRepository = {
         roomCode: string;
         roomName: string;
         gameType: string;
+        isPublic: boolean;
         totalRounds: number;
         roundDuration: number;
         maxPlayers: number;

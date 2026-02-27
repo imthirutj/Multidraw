@@ -14,6 +14,7 @@ export default function LobbyScreen() {
     // Create form
     const [roomName, setRoomName] = useState('');
     const [gameType, setGameType] = useState('drawing');
+    const [isPublic, setIsPublic] = useState(true);
     const [totalRounds, setTotalRounds] = useState<number | string>(3);
     const [roundDuration, setRoundDuration] = useState<number | string>(1.5);
     const gameTypeSelectRef = React.useRef<HTMLSelectElement | null>(null);
@@ -24,8 +25,16 @@ export default function LobbyScreen() {
     // Rooms list
     const [rooms, setRooms] = useState<RoomListItem[]>([]);
     const [error, setError] = useState('');
+    const [pendingRoomCode, setPendingRoomCode] = useState<string | null>(null);
 
     React.useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const fromLink = (params.get('room') || '').trim().toUpperCase();
+        if (/^[A-Z0-9]{6}$/.test(fromLink)) {
+            setJoinCode(fromLink);
+            setPendingRoomCode(fromLink);
+        }
+
         const fetchRooms = async () => {
             try {
                 const res = await fetch('/api/rooms');
@@ -43,6 +52,19 @@ export default function LobbyScreen() {
         const interval = setInterval(fetchRooms, 3000); // Auto-refresh every 3s
         return () => clearInterval(interval);
     }, []);
+
+    React.useEffect(() => {
+        if (!pendingRoomCode) return;
+        const nameToUse = playerName.trim();
+        if (!nameToUse) {
+            setError(`Enter your name to join room ${pendingRoomCode}`);
+            return;
+        }
+        handleJoin(pendingRoomCode);
+        setPendingRoomCode(null);
+        window.history.replaceState({}, '', window.location.pathname);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pendingRoomCode, playerName]);
 
     const handleCreate = async () => {
         const nameToUse = playerName.trim();
@@ -67,6 +89,7 @@ export default function LobbyScreen() {
                 body: JSON.stringify({
                     roomName: roomName || fallbackRoomName,
                     gameType: chosenGameType,
+                    isPublic,
                     totalRounds:
                         chosenGameType === 'truth_or_dare'
                             ? 20
@@ -179,6 +202,30 @@ export default function LobbyScreen() {
                                 <option value="truth_or_dare">🎭 Truth or Dare</option>
                                 <option value="watch_together">🎬 Watch Together</option>
                             </select>
+                        </div>
+                        <div className="form-group">
+                            <label>Room Visibility</label>
+                            <div style={{ display: 'flex', gap: 10 }}>
+                                <button
+                                    type="button"
+                                    className={`btn ${isPublic ? 'btn-primary' : 'btn-ghost'}`}
+                                    style={{ width: 'auto', padding: '10px 14px' }}
+                                    onClick={() => setIsPublic(true)}
+                                >
+                                    🌐 Public
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`btn ${!isPublic ? 'btn-primary' : 'btn-ghost'}`}
+                                    style={{ width: 'auto', padding: '10px 14px' }}
+                                    onClick={() => setIsPublic(false)}
+                                >
+                                    🔒 Private
+                                </button>
+                            </div>
+                            <div style={{ marginTop: 6, color: 'var(--text-muted)', fontSize: 12 }}>
+                                {isPublic ? 'Shows in Available Rooms.' : 'Hidden from Available Rooms (join by code/link only).'}
+                            </div>
                         </div>
                         {gameType !== 'truth_or_dare' && gameType !== 'watch_together' && (
                             <div className="form-row">

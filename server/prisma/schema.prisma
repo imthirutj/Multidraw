@@ -13,6 +13,8 @@ model GameRoom {
   roomCode       String   @unique
   roomName       String   @default("Drawing Room")
   gameType       String   @default("drawing")
+  videoUrl       String?
+  isPublic       Boolean  @default(true)
   players        Json     @default("[]")
   status         String   @default("waiting")
   currentRound   Int      @default(0)
