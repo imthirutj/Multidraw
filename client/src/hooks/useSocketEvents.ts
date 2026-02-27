@@ -103,7 +103,10 @@ export function useSocketEvents(): void {
 
         socket.on('round:end', ({ word, players }) => {
             store.setPlayers(players);
-            store.addChat({ type: 'system', text: `Round over! The word was: "${word}"` });
+            const gt = useGameStore.getState().gameType;
+            if (gt === 'drawing') {
+                store.addChat({ type: 'system', text: `Round over! The word was: "${word}"` });
+            }
         });
 
         socket.on('guess:correct', ({ players }) => store.setPlayers(players));

@@ -16,6 +16,7 @@ export default function LobbyScreen() {
     const [gameType, setGameType] = useState('drawing');
     const [totalRounds, setTotalRounds] = useState<number | string>(3);
     const [roundDuration, setRoundDuration] = useState<number | string>(1.5);
+    const gameTypeSelectRef = React.useRef<HTMLSelectElement | null>(null);
 
     // Join form
     const [joinCode, setJoinCode] = useState('');
@@ -52,10 +53,11 @@ export default function LobbyScreen() {
         setIdentity(nameToUse, avatar);
 
         try {
+            const chosenGameType = (gameTypeSelectRef.current?.value || gameType).trim();
             const fallbackRoomName =
-                gameType === 'watch_together'
+                chosenGameType === 'watch_together'
                     ? 'Watch Room'
-                    : gameType === 'truth_or_dare'
+                    : chosenGameType === 'truth_or_dare'
                         ? 'Truth or Dare Room'
                         : 'Drawing Room';
 
@@ -64,17 +66,17 @@ export default function LobbyScreen() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     roomName: roomName || fallbackRoomName,
-                    gameType,
+                    gameType: chosenGameType,
                     totalRounds:
-                        gameType === 'truth_or_dare'
+                        chosenGameType === 'truth_or_dare'
                             ? 20
-                            : gameType === 'watch_together'
+                            : chosenGameType === 'watch_together'
                                 ? 1
                                 : (Number(totalRounds) || 3),
                     roundDuration:
-                        gameType === 'truth_or_dare'
+                        chosenGameType === 'truth_or_dare'
                             ? 300
-                            : gameType === 'watch_together'
+                            : chosenGameType === 'watch_together'
                                 ? 3600
                                 : Math.round((Number(roundDuration) || 1.5) * 60)
                 }),
@@ -172,7 +174,7 @@ export default function LobbyScreen() {
                         </div>
                         <div className="form-group">
                             <label>Game Mode</label>
-                            <select value={gameType} onChange={e => setGameType(e.target.value)}>
+                            <select ref={gameTypeSelectRef} value={gameType} onChange={e => setGameType(e.target.value)}>
                                 <option value="drawing">🎨 Draw & Guess</option>
                                 <option value="truth_or_dare">🎭 Truth or Dare</option>
                                 <option value="watch_together">🎬 Watch Together</option>

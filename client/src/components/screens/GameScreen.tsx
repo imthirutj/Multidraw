@@ -14,6 +14,7 @@ const TOTAL_TIME_REF = { current: 80 };
 export default function GameScreen() {
     const { round, totalRounds, hint, timeLeft, roundDuration, isDrawer, drawerSocketId, players, currentWord, mySocketId, gameType } = useGameStore();
     const isWatchTogether = gameType === 'watch_together';
+    const isTruthOrDare = gameType === 'truth_or_dare';
 
     const me = players.find(p => p.socketId === mySocketId);
     const hasGuessed = me?.hasGuessedCorrectly;
@@ -71,6 +72,8 @@ export default function GameScreen() {
                     <span className="logo-sm">🎨 MultiDraw</span>
                     {isWatchTogether ? (
                         <div className="round-badge">🎬 Watch Together</div>
+                    ) : isTruthOrDare ? (
+                        <div className="round-badge">🎭 Truth or Dare</div>
                     ) : (
                         <div className="round-badge">Round <strong>{round}</strong> / {totalRounds}</div>
                     )}

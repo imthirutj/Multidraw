@@ -5,6 +5,7 @@ import { useGameStore } from '../../store/game.store';
 export default function WaitingScreen() {
     const { roomCode, roomName, players, isHost, username, totalRounds, roundDuration, hostTransferRequestedBy, gameType } = useGameStore();
     const isWatchTogether = gameType === 'watch_together';
+    const isTruthOrDare = gameType === 'truth_or_dare';
 
     const [transferCountdown, setTransferCountdown] = React.useState(10);
     const [playerToKick, setPlayerToKick] = React.useState<{ socketId: string, username: string } | null>(null);
@@ -127,8 +128,10 @@ export default function WaitingScreen() {
                     </div>
 
                     <div className="game-settings-display">
-                        {!isWatchTogether && <span>🔄 <strong>{totalRounds}</strong> Rounds</span>}
-                        {!isWatchTogether && <span>⏱️ <strong>{roundDuration}</strong>s per Round</span>}
+                        {!isWatchTogether && !isTruthOrDare && <span>🔄 <strong>{totalRounds}</strong> Rounds</span>}
+                        {!isWatchTogether && !isTruthOrDare && <span>⏱️ <strong>{roundDuration}</strong>s per Round</span>}
+                        {isTruthOrDare && <span>♾️ Endless turns</span>}
+                        {isTruthOrDare && <span>⏱️ <strong>{roundDuration}</strong>s per Turn</span>}
                         <span>👥 <strong>{players.length}</strong> Players</span>
                         {isWatchTogether && <span>🎛️ <strong>Host</strong> controls playback</span>}
                     </div>

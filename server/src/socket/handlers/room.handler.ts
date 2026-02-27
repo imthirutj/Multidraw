@@ -14,13 +14,13 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
     socket.on('room:join', async ({ roomCode, username, avatar }) => {
         const room = await RoomRepository.findByCode(roomCode);
         if (!room) return socket.emit('error', { message: 'Room not found' });
-        if (room.players.length >= room.maxPlayers) return socket.emit('error', { message: 'Room is full' });
         if (room.status === 'finished') return socket.emit('error', { message: 'Game already finished' });
 
-        const isHost = room.players.length === 0;
-
         const oldPlayer = room.players.find(p => p.username === username);
+        if (room.players.length >= room.maxPlayers && !oldPlayer) return socket.emit('error', { message: 'Room is full' });
+
         const wasDrawer = oldPlayer && room.currentDrawer === oldPlayer.socketId;
+        const wasHost = oldPlayer && room.hostSocketId === oldPlayer.socketId;
 
         const players = [
             ...room.players.filter(p => p.username !== username),
@@ -33,33 +33,56 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
             },
         ];
 
+        let updatedHostSocketId =
+            room.players.length === 0
+                ? socket.id
+                : (wasHost ? socket.id : room.hostSocketId);
+
+        // If host is missing/invalid, fall back to the first player.
+        if (!players.some(p => p.socketId === updatedHostSocketId)) {
+            updatedHostSocketId = players[0]?.socketId ?? socket.id;
+        }
+
+        // Keep host as the first player for UI assumptions.
+        const hostPlayer = players.find(p => p.socketId === updatedHostSocketId);
+        const orderedPlayers = hostPlayer
+            ? [hostPlayer, ...players.filter(p => p.socketId !== updatedHostSocketId)]
+            : players;
+
         let updatedCurrentDrawer = room.currentDrawer;
         if (wasDrawer) {
             updatedCurrentDrawer = socket.id;
         }
 
+        // If the current turn socket is missing (disconnect/reconnect edge), pick a safe fallback.
+        if (!orderedPlayers.some(p => p.socketId === updatedCurrentDrawer)) {
+            updatedCurrentDrawer = updatedHostSocketId || orderedPlayers[0]?.socketId || '';
+        }
+
         await RoomRepository.save(roomCode, {
-            players,
+            players: orderedPlayers,
             currentDrawer: updatedCurrentDrawer,
-            ...(isHost ? { hostSocketId: socket.id } : {}),
+            hostSocketId: updatedHostSocketId,
         });
 
         socket.join(roomCode);
         socket.data.roomCode = roomCode;
         socket.data.username = username;
 
+        const isHost = updatedHostSocketId === socket.id;
+
         socket.emit('room:joined', {
             roomCode,
             roomName: room.roomName,
             gameType: room.gameType,
-            players,
+            players: orderedPlayers,
             isHost,
             status: room.status,
             totalRounds: room.totalRounds,
             roundDuration: room.roundDuration,
         });
 
-        socket.to(roomCode).emit('player:joined', { players, username });
+        socket.to(roomCode).emit('player:joined', { players: orderedPlayers, username });
         io.to(roomCode).emit('chat:message', { type: 'system', text: `${username} joined the room` });
 
         if (room.gameType === 'watch_together') {
@@ -72,18 +95,31 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
             if (room.gameType !== 'watch_together') {
                 const timeLeft = gameService.getTimeLeft(roomCode) || room.roundDuration;
                 const revealed = gameService.getRevealedCount(roomCode);
-                const drawerDetails = players.find(p => p.socketId === updatedCurrentDrawer);
+                const drawerDetails = orderedPlayers.find(p => p.socketId === updatedCurrentDrawer)
+                    ?? orderedPlayers[0]
+                    ?? { username };
 
-                import('../../utils/words').then(({ getRevealedHint }) => {
+                if (room.gameType === 'truth_or_dare') {
                     socket.emit('round:start', {
                         round: room.currentRound,
                         totalRounds: room.totalRounds,
                         drawerSocketId: updatedCurrentDrawer,
-                        drawerName: drawerDetails?.username || 'Unknown',
-                        hint: room.currentWord ? getRevealedHint(room.currentWord, revealed) : '',
+                        drawerName: drawerDetails.username,
+                        hint: '',
                         timeLeft
                     });
-                });
+                } else {
+                    import('../../utils/words').then(({ getRevealedHint }) => {
+                        socket.emit('round:start', {
+                            round: room.currentRound,
+                            totalRounds: room.totalRounds,
+                            drawerSocketId: updatedCurrentDrawer,
+                            drawerName: drawerDetails.username,
+                            hint: room.currentWord ? getRevealedHint(room.currentWord, revealed) : '',
+                            timeLeft
+                        });
+                    });
+                }
 
                 // Request full canvas sync from the current drawer
                 if (updatedCurrentDrawer) {
