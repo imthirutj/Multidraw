@@ -257,7 +257,7 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         if (!room || room.status !== 'playing') return;
 
         io.to(roomCode).emit('td:prompt_ready', { prompt });
-        io.to(roomCode).emit('chat:message', { type: 'system', text: `Question: ${prompt}` });
+        io.to(roomCode).emit('chat:message', { type: 'system', text: `Question: "**${prompt}**"` });
     });
 
     socket.on('td:next_turn', async () => {
@@ -310,7 +310,7 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         const name = player?.username || 'Someone';
 
         if (action === 'complete') {
-            const answerText = answer ? ` Answer: "${answer}"` : '';
+            const answerText = answer ? ` Answer: "**${answer}**"` : '';
             io.to(roomCode).emit('chat:message', { type: 'system', text: `${name} completed the task!${answerText} (${pointDelta > 0 ? '+' : ''}${pointDelta} pts)` });
         } else {
             const msgMap = { skip: 'skipped their task.', refuse: 'refused the task!' };

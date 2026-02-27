@@ -3,7 +3,7 @@ import { useGameStore } from '../../store/game.store';
 import socket from '../../config/socket';
 import { useVoiceChat } from '../../hooks/useVoiceChat';
 
-export default function Chat() {
+export default function Chat({ variant = 'default' }: { variant?: 'default' | 'overlay' }) {
     const { chatMessages, isDrawer, roomCode } = useGameStore();
     const { isSpeaking, startSpeaking, stopSpeaking, error } = useVoiceChat(roomCode);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -13,6 +13,7 @@ export default function Chat() {
     const [gifSearch, setGifSearch] = useState('');
     const [gifs, setGifs] = useState<string[]>([]);
     const [isSearchingGifs, setIsSearchingGifs] = useState(false);
+    const [isOpen, setIsOpen] = useState(variant !== 'overlay');
 
     useEffect(() => {
         if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
@@ -60,7 +61,18 @@ export default function Chat() {
     }, [showGifMenu, gifSearch]);
 
     return (
-        <div className="chat-area">
+        <div className={`chat-area ${variant === 'overlay' ? 'overlay-chat' : ''} ${!isOpen ? 'closed' : ''}`}>
+
+            {variant === 'overlay' && (
+                <button
+                    className="btn btn-ghost-sm"
+                    style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 60, padding: '8px 12px', background: 'var(--surface-light)', borderRadius: '20px', boxShadow: '0 4px 10px rgba(0,0,0,0.5)', opacity: isOpen ? 0.7 : 1, pointerEvents: 'auto' }}
+                    onClick={() => setIsOpen(!isOpen)}
+                >
+                    💬 Chat
+                </button>
+            )}
+
             <div className="chat-messages" ref={listRef}>
                 {chatMessages.map((msg, i) => {
                     const gifMatch = msg.text.match(/^(.*?):\s?GIF:\s?(http[^\s]+)$/);
@@ -83,7 +95,12 @@ export default function Chat() {
                             {msg.type === 'chat' && msg.username && (
                                 <span className="msg-user">{msg.username}: </span>
                             )}
-                            {textWithoutUsername}
+                            {textWithoutUsername.split(/(\*\*.*?\*\*)/).map((part, idx) => {
+                                if (part.startsWith('**') && part.endsWith('**')) {
+                                    return <span key={idx} style={{ fontWeight: 900, color: 'var(--primary-light)', fontSize: '1.1em' }}>{part.slice(2, -2)}</span>;
+                                }
+                                return part;
+                            })}
                         </div>
                     );
                 })}
@@ -111,36 +128,38 @@ export default function Chat() {
                 </div>
             )}
 
-            <div className="chat-input-row" style={{ position: 'relative' }}>
-                {error && <div style={{ position: 'absolute', top: '-25px', color: 'red', fontSize: '10px' }}>{error}</div>}
-                <button
-                    className="gif-toggle-btn"
-                    onMouseDown={startSpeaking}
-                    onMouseUp={stopSpeaking}
-                    onMouseLeave={stopSpeaking}
-                    onTouchStart={startSpeaking}
-                    onTouchEnd={stopSpeaking}
-                    title={isSpeaking ? "Release to Mute" : "Hold to Talk"}
-                    style={{ background: isSpeaking ? 'rgba(50,255,50,0.2)' : 'rgba(255,255,255,0.05)', color: isSpeaking ? '#4caf50' : '#888' }}
-                >
-                    {isSpeaking ? '🎙️' : '🎤'}
-                </button>
-                <button
-                    className="gif-toggle-btn"
-                    onClick={() => setShowGifMenu(!showGifMenu)}
-                >
-                    GIF
-                </button>
-                <input
-                    ref={inputRef}
-                    type="text"
-                    placeholder="Type a message..."
-                    maxLength={60}
-                    onKeyDown={e => e.key === 'Enter' && send()}
-                    autoComplete="off"
-                />
-                <button onClick={send}>➤</button>
-            </div>
+            {isOpen && (
+                <div className="chat-input-row" style={{ position: 'relative' }}>
+                    {error && <div style={{ position: 'absolute', top: '-25px', color: 'red', fontSize: '10px' }}>{error}</div>}
+                    <button
+                        className="gif-toggle-btn"
+                        onMouseDown={startSpeaking}
+                        onMouseUp={stopSpeaking}
+                        onMouseLeave={stopSpeaking}
+                        onTouchStart={startSpeaking}
+                        onTouchEnd={stopSpeaking}
+                        title={isSpeaking ? "Release to Mute" : "Hold to Talk"}
+                        style={{ background: isSpeaking ? 'rgba(50,255,50,0.2)' : 'rgba(255,255,255,0.05)', color: isSpeaking ? '#4caf50' : '#888' }}
+                    >
+                        {isSpeaking ? '🎙️' : '🎤'}
+                    </button>
+                    <button
+                        className="gif-toggle-btn"
+                        onClick={() => setShowGifMenu(!showGifMenu)}
+                    >
+                        GIF
+                    </button>
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        placeholder="Type a message..."
+                        maxLength={60}
+                        onKeyDown={e => e.key === 'Enter' && send()}
+                        autoComplete="off"
+                    />
+                    <button onClick={send}>➤</button>
+                </div>
+            )}
         </div>
     );
 }
