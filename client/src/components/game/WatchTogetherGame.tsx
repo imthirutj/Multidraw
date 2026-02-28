@@ -25,6 +25,7 @@ export default function WatchTogetherGame() {
     const [showYouTubePicker, setShowYouTubePicker] = React.useState(false);
     const [ytUrlInput, setYtUrlInput] = React.useState('');
     const [ytError, setYtError] = React.useState<string | null>(null);
+    const [showSetVideoModal, setShowSetVideoModal] = React.useState(false);
 
     const formatTime = (t: number | null | undefined) => {
         if (t === null || t === undefined || !Number.isFinite(t)) return '--:--';
@@ -283,96 +284,32 @@ export default function WatchTogetherGame() {
                     minHeight: 0,
                 }}
             >
-                {/* URL input controls */}
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+                {/* Compact topbar: single button instead of inline URL boxes */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, flexShrink: 0 }}>
                     {isHost ? (
-                        <>
-                            <input
-                                value={urlInput}
-                                onChange={e => setUrlInput(e.target.value)}
-                                placeholder="Paste a direct video URL (http/https)…"
-                                style={{ flex: 1, minWidth: 220 }}
-                            />
-                            <button
-                                className="btn btn-ghost-sm"
-                                style={{ width: 'auto', padding: '10px 10px' }}
-                                title="Paste from clipboard"
-                                onClick={async () => {
-                                    try {
-                                        const text = await navigator.clipboard.readText();
-                                        if (text) setUrlInput(text);
-                                    } catch {
-                                        // silently ignore if not permitted
-                                    }
-                                }}
-                            >
-                                📋
-                            </button>
-                            <button className="btn btn-primary" style={{ width: 'auto', padding: '10px 16px' }} onClick={setVideo}>
-                                Set Video
-                            </button>
-                        </>
+                        <button
+                            className="btn btn-primary"
+                            style={{ width: 'auto', padding: '8px 16px', fontSize: 13 }}
+                            onClick={() => setShowSetVideoModal(true)}
+                        >
+                            📹 Set Video
+                        </button>
                     ) : (
-                        <div style={{ flex: 1, minWidth: 220, color: 'var(--text-muted)', fontSize: 13 }}>
-                            <strong style={{ color: 'var(--text)' }}>Host controls playback.</strong> Use resync if you drift.
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                            {watch.url
+                                ? <span style={{ color: 'var(--accent)', fontWeight: 700 }}>▶ Playing</span>
+                                : 'Waiting for host to set a video…'}
                         </div>
                     )}
                     <button
                         className="btn btn-ghost-sm"
-                        style={{ width: 'auto', padding: '10px 12px' }}
+                        style={{ width: 'auto', padding: '8px 12px', marginLeft: 'auto' }}
                         onClick={resync}
-                        title="Resync"
+                        title="Resync with host"
                     >
-                        ↻
+                        ↻ Resync
                     </button>
-                    {isHost && (
-                        <button
-                            className="btn btn-ghost-sm"
-                            style={{ width: 'auto', padding: '10px 14px' }}
-                            onClick={() => {
-                                setShowYouTubePicker(true);
-                                setYtError(null);
-                            }}
-                            title="Play a YouTube video"
-                        >
-                            ▶️ YouTube
-                        </button>
-                    )}
                 </div>
-
-                {isHost && (
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
-                        <input
-                            value={pageUrlInput}
-                            onChange={e => setPageUrlInput(e.target.value)}
-                            placeholder="Or paste a page URL to find videos on it…"
-                            style={{ flex: 1, minWidth: 220 }}
-                        />
-                        <button
-                            className="btn btn-ghost-sm"
-                            style={{ width: 'auto', padding: '10px 10px' }}
-                            title="Paste from clipboard"
-                            onClick={async () => {
-                                try {
-                                    const text = await navigator.clipboard.readText();
-                                    if (text) setPageUrlInput(text);
-                                } catch {
-                                    // ignore if not permitted
-                                }
-                            }}
-                        >
-                            📋
-                        </button>
-                        <button
-                            className="btn btn-ghost-sm"
-                            style={{ width: 'auto' }}
-                            onClick={findVideosOnPage}
-                            disabled={isFinding}
-                        >
-                            {isFinding ? 'Finding…' : 'Find Videos'}
-                        </button>
-                    </div>
-                )}
 
                 {/* Video + transparent overlay chat wrapper */}
                 <div className="wt-video-wrapper" style={{ flex: 1, position: 'relative', minHeight: 0 }}>
@@ -537,8 +474,184 @@ export default function WatchTogetherGame() {
 
             </div>
 
+            {/* ── Set Video modal ─────────────────────────────────────────── */}
+            {isHost && showSetVideoModal && (
+                <div className="modal-overlay" onClick={() => setShowSetVideoModal(false)}>
+                    <div
+                        className="modal-content"
+                        style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: 0, padding: 0, overflow: 'hidden' }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid var(--border)' }}>
+                            <h3 style={{ margin: 0, fontSize: 17 }}>📹 Set Video</h3>
+                            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+                                Paste a URL, pick a YouTube video, or scrape links from any page.
+                            </p>
+                        </div>
+
+                        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 18, maxHeight: '70vh', overflowY: 'auto' }}>
+
+                            {/* Section 1 — Direct URL */}
+                            <div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                                    Direct video URL (.mp4, .webm, .m3u8…)
+                                </div>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <input
+                                        value={urlInput}
+                                        onChange={e => setUrlInput(e.target.value)}
+                                        placeholder="https://example.com/video.mp4"
+                                        style={{ flex: 1 }}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter' && urlInput.trim()) {
+                                                setVideo();
+                                                setShowSetVideoModal(false);
+                                            }
+                                        }}
+                                        autoFocus
+                                    />
+                                    <button
+                                        className="btn btn-ghost-sm"
+                                        style={{ width: 'auto', padding: '10px 10px' }}
+                                        title="Paste from clipboard"
+                                        onClick={async () => {
+                                            try {
+                                                const text = await navigator.clipboard.readText();
+                                                if (text) setUrlInput(text);
+                                            } catch { /* ignore */ }
+                                        }}
+                                    >📋</button>
+                                </div>
+                                <button
+                                    className="btn btn-primary"
+                                    style={{ width: '100%', marginTop: 8 }}
+                                    disabled={!urlInput.trim()}
+                                    onClick={() => { setVideo(); setShowSetVideoModal(false); }}
+                                >
+                                    ✓ Use this URL
+                                </button>
+                            </div>
+
+                            {/* Divider */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>or</span>
+                                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                            </div>
+
+                            {/* Section 2 — YouTube */}
+                            <div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                                    YouTube link
+                                </div>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <input
+                                        value={ytUrlInput}
+                                        onChange={e => { setYtUrlInput(e.target.value); setYtError(null); }}
+                                        placeholder="https://youtube.com/watch?v=…"
+                                        style={{ flex: 1 }}
+                                    />
+                                    <button
+                                        className="btn btn-ghost-sm"
+                                        style={{ width: 'auto', padding: '10px 10px' }}
+                                        title="Paste from clipboard"
+                                        onClick={async () => {
+                                            try {
+                                                const text = await navigator.clipboard.readText();
+                                                if (text) setYtUrlInput(text);
+                                            } catch { /* ignore */ }
+                                        }}
+                                    >📋</button>
+                                </div>
+                                {ytError && <div className="error-banner" style={{ marginTop: 6 }}>⚠️ {ytError}</div>}
+                                {parseYouTubeId(ytUrlInput) && (
+                                    <div style={{ marginTop: 8, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                                        <div style={{ position: 'relative', aspectRatio: '16/9', background: '#000' }}>
+                                            <img
+                                                src={`https://img.youtube.com/vi/${parseYouTubeId(ytUrlInput)}/hqdefault.jpg`}
+                                                alt="thumbnail"
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                                onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                <button
+                                    className="btn btn-ghost-sm"
+                                    style={{ width: '100%', marginTop: 8 }}
+                                    disabled={!parseYouTubeId(ytUrlInput)}
+                                    onClick={() => {
+                                        const id = parseYouTubeId(ytUrlInput);
+                                        if (!id) { setYtError('Enter a valid YouTube URL'); return; }
+                                        const full = `https://www.youtube.com/watch?v=${id}`;
+                                        setUrlInput(full);
+                                        socket.emit('wt:set_video', { url: full });
+                                        setShowSetVideoModal(false);
+                                        setYtError(null);
+                                    }}
+                                >
+                                    ▶️ Use YouTube video
+                                </button>
+                            </div>
+
+                            {/* Divider */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>or</span>
+                                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                            </div>
+
+                            {/* Section 3 — Find on page */}
+                            <div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                                    Find videos on a webpage
+                                </div>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <input
+                                        value={pageUrlInput}
+                                        onChange={e => setPageUrlInput(e.target.value)}
+                                        placeholder="https://example.com/movies"
+                                        style={{ flex: 1 }}
+                                    />
+                                    <button
+                                        className="btn btn-ghost-sm"
+                                        style={{ width: 'auto', padding: '10px 10px' }}
+                                        title="Paste from clipboard"
+                                        onClick={async () => {
+                                            try {
+                                                const text = await navigator.clipboard.readText();
+                                                if (text) setPageUrlInput(text);
+                                            } catch { /* ignore */ }
+                                        }}
+                                    >📋</button>
+                                </div>
+                                {findError && <div className="error-banner" style={{ marginTop: 6 }}>⚠️ {findError}</div>}
+                                <button
+                                    className="btn btn-ghost-sm"
+                                    style={{ width: '100%', marginTop: 8 }}
+                                    disabled={!pageUrlInput.trim() || isFinding}
+                                    onClick={async () => { await findVideosOnPage(); if (!findError) setShowPicker(true); }}
+                                >
+                                    {isFinding ? '🔍 Finding…' : '🔍 Find Videos on Page'}
+                                </button>
+                            </div>
+
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button className="btn btn-ghost-sm" style={{ width: 'auto' }} onClick={() => setShowSetVideoModal(false)}>
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Generic video picker modal (all screen sizes, host only) */}
             {isHost && showPicker && (
+
                 <div className="modal-overlay" onClick={() => setShowPicker(false)}>
                     <div
                         className="modal-content"
