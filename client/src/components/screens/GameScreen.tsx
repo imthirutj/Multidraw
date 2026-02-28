@@ -160,6 +160,12 @@ export default function GameScreen() {
                                         💣 Delete Room
                                     </button>
                                 )}
+                                <button
+                                    className="btn btn-ghost-sm"
+                                    onClick={() => window.location.reload()}
+                                >
+                                    🏃 Leave
+                                </button>
                             </div>
                             <UserProfile inline />
                         </div>

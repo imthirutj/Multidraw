@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useGameStore } from '../../store/game.store';
 
 const UserProfile = ({ inline = false }: { inline?: boolean }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const { roomCode } = useGameStore();
 
     const userStr = localStorage.getItem('user');
     if (!userStr) return null;
@@ -19,8 +21,8 @@ const UserProfile = ({ inline = false }: { inline?: boolean }) => {
     };
 
     const containerStyle: React.CSSProperties = inline
-        ? { position: 'relative' }
-        : { position: 'absolute', top: '20px', right: '20px', zIndex: 100 };
+        ? { position: 'relative', zIndex: 9999 }
+        : { position: 'absolute', top: '20px', right: '20px', zIndex: 9999 };
 
     return (
         <div style={containerStyle}>
@@ -47,8 +49,17 @@ const UserProfile = ({ inline = false }: { inline?: boolean }) => {
                     minWidth: '150px',
                     boxShadow: 'var(--shadow)',
                     animation: 'popIn 0.2s ease',
-                    zIndex: 101,
+                    zIndex: 9999,
                 }}>
+                    {roomCode && (
+                        <button
+                            className="btn btn-ghost"
+                            style={{ width: '100%', padding: '8px 12px', fontSize: '13px', marginBottom: '8px', border: '1px solid var(--border)' }}
+                            onClick={() => window.location.reload()}
+                        >
+                            🏃 Leave Room
+                        </button>
+                    )}
                     <button
                         className="btn btn-danger"
                         style={{ width: '100%', padding: '8px 12px', fontSize: '13px' }}
