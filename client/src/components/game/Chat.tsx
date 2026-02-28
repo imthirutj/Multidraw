@@ -18,22 +18,18 @@ export default function Chat({ variant = 'default', className = '' }: { variant?
     const [isHistoryVisible, setIsHistoryVisible] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const [isHovering, setIsHovering] = useState(false);
+    const [isFocused, setIsFocused] = useState(false);
     const prevMsgCountRef = useRef(chatMessages.length);
 
-    // Auto-reveal on new message and auto-hide after 7 seconds
+    // Auto-hide history after 7 seconds when toggled manually
     useEffect(() => {
-        const isNewMsg = chatMessages.length > prevMsgCountRef.current;
-        if (isNewMsg) {
-            setIsHistoryVisible(true);
-        }
-
-        if (isHistoryVisible && !isHovering) {
+        if (isHistoryVisible && !isHovering && !isFocused) {
             const timer = setTimeout(() => {
                 setIsHistoryVisible(false);
             }, 7000);
             return () => clearTimeout(timer);
         }
-    }, [isHistoryVisible, chatMessages.length, isHovering]);
+    }, [isHistoryVisible, isHovering, isFocused]);
 
     // Auto-scroll AND unread tracking logic
     useEffect(() => {
@@ -243,6 +239,12 @@ export default function Chat({ variant = 'default', className = '' }: { variant?
                         placeholder="Type a message..."
                         maxLength={60}
                         onKeyDown={e => e.key === 'Enter' && send()}
+                        onFocus={() => {
+                            setIsFocused(true);
+                            setIsHistoryVisible(true);
+                            setUnreadCount(0);
+                        }}
+                        onBlur={() => setIsFocused(false)}
                         autoComplete="off"
                     />
                     <button onClick={send}>➤</button>
