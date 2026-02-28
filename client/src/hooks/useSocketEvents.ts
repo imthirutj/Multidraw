@@ -9,8 +9,20 @@ import { useGameStore } from '../store/game.store';
 export function useSocketEvents(): void {
     const store = useGameStore();
 
+
     useEffect(() => {
-        socket.on('connect', () => store.setMySocketId(socket.id ?? ''));
+        // Update mySocketId on every connect/reconnect
+        socket.on('connect', () => {
+            const newId = socket.id ?? '';
+            store.setMySocketId(newId);
+
+            // If we were already in a room (reconnect scenario), re-join automatically
+            // so the server updates our socket ID and we receive events again.
+            const { roomCode, username, avatar, screen } = useGameStore.getState();
+            if (roomCode && username && (screen === 'waiting' || screen === 'game')) {
+                socket.emit('room:join', { roomCode, username, avatar });
+            }
+        });
 
         socket.on('room:joined', payload => {
             store.setRoom({
@@ -27,14 +39,14 @@ export function useSocketEvents(): void {
             store.setScreen(payload.status === 'playing' ? 'game' : 'waiting');
         });
 
-        socket.on('player:joined', ({ players, username }) => {
+        socket.on('player:joined', ({ players }) => {
+            // Only update player list — server already broadcasts chat:message for join/leave
             store.setPlayers(players);
-            store.addChat({ type: 'system', text: `${username} joined` });
         });
 
-        socket.on('player:left', ({ players, username, newHostId }) => {
+        socket.on('player:left', ({ players, newHostId }) => {
             store.setPlayers(players);
-            store.addChat({ type: 'system', text: `${username} left` });
+            // Server already sends chat:message for player left, no duplicate needed
 
             if (newHostId) {
                 store.setRoom({ isHost: newHostId === socket.id });
@@ -74,8 +86,8 @@ export function useSocketEvents(): void {
         });
 
         socket.on('game:starting', () => {
+            // Don't wipe chat — players want to keep the context
             store.setScreen('game');
-            store.setRoom({ chatMessages: [] });
         });
 
         socket.on('round:start', payload => {

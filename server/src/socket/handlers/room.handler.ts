@@ -71,6 +71,7 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         socket.data.username = username;
 
         const isHost = updatedHostSocketId === socket.id;
+        const isRejoin = !!oldPlayer; // true when same username was already in the room
 
         socket.emit('room:joined', {
             roomCode,
@@ -83,8 +84,13 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
             roundDuration: room.roundDuration,
         });
 
-        socket.to(roomCode).emit('player:joined', { players: orderedPlayers, username });
-        io.to(roomCode).emit('chat:message', { type: 'system', text: `${username} joined the room` });
+        // Broadcast updated player list to ALL existing members so reconnected socket IDs propagate
+        io.to(roomCode).emit('player:joined', { players: orderedPlayers, username: isRejoin ? '' : username });
+        if (!isRejoin) {
+            io.to(roomCode).emit('chat:message', { type: 'system', text: `${username} joined the room` });
+        } else {
+            io.to(roomCode).emit('chat:message', { type: 'system', text: `${username} reconnected` });
+        }
 
         if (room.gameType === 'watch_together') {
             socket.emit('wt:state', watchService.getSnapshot(roomCode));
@@ -117,6 +123,16 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
                         hint: '',
                         timeLeft
                     });
+                } else if (room.gameType === 'bottle_spin') {
+                    // Sync spinner state for bottle spin mid-game joiner
+                    socket.emit('round:start', {
+                        round: room.currentRound,
+                        totalRounds: room.totalRounds,
+                        drawerSocketId: updatedCurrentDrawer,
+                        drawerName: drawerDetails.username,
+                        hint: '',
+                        timeLeft
+                    });
                 } else {
                     import('../../utils/words').then(({ getRevealedHint }) => {
                         socket.emit('round:start', {
@@ -131,13 +147,13 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
                 }
 
                 // Request full canvas sync from the current drawer
-                if (updatedCurrentDrawer) {
+                if (updatedCurrentDrawer && room.gameType === 'drawing') {
                     io.to(updatedCurrentDrawer).emit('canvas:request', { requesterSocketId: socket.id });
                 }
-            } else {
             }
         }
     });
+
 
     socket.on('game:start', async () => {
         const { roomCode } = socket.data;

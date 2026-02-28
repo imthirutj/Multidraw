@@ -76,9 +76,12 @@ export default function LobbyScreen() {
         if (!pendingRoomCode) return;
         const nameToUse = playerName.trim();
         if (!nameToUse) {
+            // Name not ready yet — don't clear pendingRoomCode, wait for it
             setError(`Enter your name to join room ${pendingRoomCode}`);
             return;
         }
+        // Name is ready — clear error and proceed
+        setError('');
         handleJoin(pendingRoomCode);
         setPendingRoomCode(null);
         window.history.replaceState({}, '', window.location.pathname);
