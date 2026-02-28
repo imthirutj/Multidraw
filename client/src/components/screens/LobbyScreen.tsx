@@ -6,6 +6,13 @@ import type { RoomListItem } from '../../types/game.types';
 const AVATARS = ['🐶', '🐱', '🦊', '🐼', '🐸', '🐯', '🦁', '🐻', '🐧', '🦄', '🐙', '🦋'];
 const randomAvatar = () => AVATARS[Math.floor(Math.random() * AVATARS.length)];
 
+const GAME_MODES = [
+    { id: 'drawing', name: 'Draw & Guess', icon: '🎨', desc: 'Draw pictures and let others guess the word!' },
+    { id: 'truth_or_dare', name: 'Truth or Dare', icon: '🎭', desc: 'Reveal secrets or do crazy challenges.' },
+    { id: 'bottle_spin', name: 'Bottle Spin', icon: '🍾', desc: 'Spin the bottle, complete tasks and earn points.' },
+    { id: 'watch_together', name: 'Watch Together', icon: '🎬', desc: 'Watch  videos synced with friends.' }
+];
+
 export default function LobbyScreen() {
     const { setIdentity } = useGameStore();
 
@@ -35,6 +42,9 @@ export default function LobbyScreen() {
     const [rooms, setRooms] = useState<RoomListItem[]>([]);
     const [error, setError] = useState('');
     const [pendingRoomCode, setPendingRoomCode] = useState<string | null>(null);
+
+    // Modal state
+    const [selectedMode, setSelectedMode] = useState<string | null>(null);
 
     React.useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -286,7 +296,97 @@ export default function LobbyScreen() {
                         <button className="btn btn-secondary" onClick={() => handleJoin()} style={{ marginTop: 'auto' }}>Join Room 🎮</button>
                     </div>
                 </div>
+
+                {/* Game Modes Grid */}
+                <h2 style={{ marginTop: '30px', marginBottom: '10px', textAlign: 'center' }}>🎮 Choose a Game</h2>
+                <div className="game-modes-grid">
+                    {GAME_MODES.map(mode => (
+                        <div key={mode.id} className="game-mode-card" onClick={() => {
+                            setGameType(mode.id); // Prefill form
+                            setSelectedMode(mode.id);
+                        }}>
+                            <div className="game-mode-icon">{mode.icon}</div>
+                            <div className="game-mode-title">{mode.name}</div>
+                            <div className="game-mode-desc">{mode.desc}</div>
+                        </div>
+                    ))}
+                </div>
             </div>
+
+            {/* Game Mode Detail Modal */}
+            {selectedMode && (
+                <div className="modal-overlay" onClick={() => setSelectedMode(null)} style={{ alignItems: 'flex-start', paddingTop: '5vh', overflowY: 'auto' }}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '800px', margin: 'auto' }}>
+                        {(() => {
+                            const mode = GAME_MODES.find(m => m.id === selectedMode)!;
+                            const modeRooms = rooms.filter(r => r.gameType === mode.id);
+                            return (
+                                <>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '15px', marginBottom: '20px' }}>
+                                        <h2 style={{ margin: 0 }}>{mode.icon} {mode.name}</h2>
+                                        <button className="btn btn-ghost-sm" onClick={() => setSelectedMode(null)} style={{ width: 'auto' }}>Close</button>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                                        {/* Create Form */}
+                                        <div className="card" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                                            <h3 style={{ marginBottom: 15 }}>Create Room</h3>
+                                            <div className="form-group">
+                                                <label>Room Name</label>
+                                                <input value={roomName} onChange={e => setRoomName(e.target.value)} placeholder="My Awesome Room" maxLength={30} />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Room Visibility</label>
+                                                <div style={{ display: 'flex', gap: 10 }}>
+                                                    <button type="button" className={`btn ${isPublic ? 'btn-primary' : 'btn-ghost'}`} style={{ width: 'auto', padding: '10px 14px' }} onClick={() => setIsPublic(true)}>🌐 Public</button>
+                                                    <button type="button" className={`btn ${!isPublic ? 'btn-primary' : 'btn-ghost'}`} style={{ width: 'auto', padding: '10px 14px' }} onClick={() => setIsPublic(false)}>🔒 Private</button>
+                                                </div>
+                                            </div>
+                                            {mode.id !== 'truth_or_dare' && mode.id !== 'watch_together' && (
+                                                <div className="form-row">
+                                                    <div className="form-group">
+                                                        <label>Rounds</label>
+                                                        <input type="number" min={1} max={20} value={totalRounds} onChange={e => setTotalRounds(e.target.value)} placeholder="3" />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label>Time / Round (mins)</label>
+                                                        <input type="number" min={0.5} max={10} step="0.5" value={roundDuration} onChange={e => setRoundDuration(e.target.value)} placeholder="1.5" />
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <button className="btn btn-primary" onClick={handleCreate} style={{ width: '100%', marginTop: 20 }}>Create Room ✨</button>
+                                        </div>
+
+                                        {/* Active Rooms */}
+                                        <div className="card" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                                            <h3 style={{ marginBottom: 15 }}>Active {mode.name} Rooms</h3>
+                                            <div className="rooms-list" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                                                {modeRooms.length === 0 ? (
+                                                    <p className="no-rooms">No open rooms found for this mode</p>
+                                                ) : modeRooms.map(r => (
+                                                    <div key={r.roomCode} className="room-item">
+                                                        <div>
+                                                            <div className="room-item-name">
+                                                                {r.roomName}
+                                                                {r.status === 'playing' && <span style={{ marginLeft: '8px', fontSize: '0.7rem', backgroundColor: 'var(--primary)', color: '#fff', padding: '2px 6px', borderRadius: '4px', verticalAlign: 'middle' }}>▶ Playing</span>}
+                                                            </div>
+                                                            <div className="room-item-meta">
+                                                                👥 {r.players.length}/{r.maxPlayers}
+                                                                {r.gameType !== 'watch_together' && <>&nbsp;|&nbsp; 🔄 {r.totalRounds} rounds</>}
+                                                            </div>
+                                                        </div>
+                                                        <button className="room-item-btn" onClick={() => { setJoinCode(r.roomCode); handleJoin(r.roomCode); }}>Join</button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            );
+                        })()}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
