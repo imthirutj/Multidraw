@@ -28,42 +28,7 @@ export class GameService {
         const players = room.players.map(p => ({ ...p, hasGuessedCorrectly: false }));
         const currentRound = room.currentRound + 1;
 
-        // Truth or Dare uses the round system only to rotate the active player.
-        if (room.gameType === 'truth_or_dare') {
-            const answererIndex = room.players.length > 1 ? (room.currentRound + 1) % room.players.length : drawerIndex;
-            const answerer = room.players[answererIndex];
 
-            const updatedRoom = await RoomRepository.save(roomCode, {
-                players,
-                currentWord: '',
-                currentDrawer: drawer.socketId,
-                currentRound,
-                roundHistories: [
-                    ...room.roundHistories,
-                    {
-                        roundNumber: currentRound,
-                        word: '',
-                        drawer: drawer.username,
-                        correctGuessers: [],
-                        startedAt: new Date(),
-                    },
-                ],
-            });
-
-            this.io.to(roomCode).emit('round:start', {
-                round: updatedRoom.currentRound,
-                totalRounds: updatedRoom.totalRounds,
-                drawerSocketId: drawer.socketId,
-                drawerName: drawer.username,
-                answererSocketId: answerer.socketId,
-                answererName: answerer.username,
-                hint: '',
-                timeLeft: updatedRoom.roundDuration,
-            });
-
-            this.startTimer(roomCode, updatedRoom.roundDuration, '');
-            return;
-        }
 
         // Bottle Spin uses the round system only to rotate the active spinner.
         if (room.gameType === 'bottle_spin') {
@@ -196,8 +161,8 @@ export class GameService {
             this.endGame(roomCode);
         };
 
-        // Truth or Dare and Bottle Spin never "finishes" — it just rotates turns indefinitely.
-        if (room.gameType === 'truth_or_dare' || room.gameType === 'bottle_spin') {
+        // Bottle Spin never "finishes" — it just rotates turns indefinitely.
+        if (room.gameType === 'bottle_spin') {
             this.transitionTimers.set(roomCode, setTimeout(runNext, delay));
             return;
         }
@@ -212,7 +177,7 @@ export class GameService {
     async endGame(roomCode: string): Promise<void> {
         const room = await RoomRepository.findByCode(roomCode);
         if (!room) return;
-        if (room.gameType === 'truth_or_dare' || room.gameType === 'bottle_spin') return; // Endless sessions do not end
+        if (room.gameType === 'bottle_spin') return; // Endless sessions do not end
         await RoomRepository.save(roomCode, { status: 'finished' });
         const leaderboard = [...room.players].sort((a, b) => b.score - a.score);
         this.io.to(roomCode).emit('game:over', { leaderboard });

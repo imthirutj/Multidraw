@@ -23,12 +23,10 @@ interface GameState {
     isDrawer: boolean;
     drawerSocketId: string;
     drawerName: string;
-    answererSocketId: string;
-    answererName: string;
     currentWord: string;   // only set for drawer
     hint: string;
     timeLeft: number;
-    tdChoice: { choice: 'truth' | 'dare'; prompt?: string } | null;
+
     bsSpin: { rotationOffset: number; targetIndex: number; targetSocketId: string; promptType: 'truth' | 'dare'; promptText: string } | null;
     bsAnswer: { action: 'complete' | 'skip' | 'refuse'; answer: string; targetName: string; pointDelta: number; spinnerName?: string; question?: string; } | null;
 
@@ -53,7 +51,7 @@ interface GameState {
     setHint: (hint: string) => void;
     setTimeLeft: (t: number) => void;
     setCurrentWord: (w: string) => void;
-    setTdChoice: (val: GameState['tdChoice']) => void;
+
     setBsSpin: (val: GameState['bsSpin']) => void;
     setBsAnswer: (val: GameState['bsAnswer']) => void;
     setWatchState: (val: WatchTogetherStatePayload) => void;
@@ -81,12 +79,10 @@ const initialState = {
     isDrawer: false,
     drawerSocketId: '',
     drawerName: '',
-    answererSocketId: '',
-    answererName: '',
     currentWord: '',
     hint: '',
     timeLeft: 80,
-    tdChoice: null as GameState['tdChoice'],
+
     bsSpin: null as GameState['bsSpin'],
     bsAnswer: null as GameState['bsAnswer'],
     watch: { url: null, isPlaying: false, currentTime: 0, updatedAtMs: 0 } as WatchTogetherStatePayload,
@@ -110,7 +106,7 @@ export const useGameStore = create<GameState>(set => ({
     setHint: hint => set({ hint }),
     setTimeLeft: timeLeft => set({ timeLeft }),
     setCurrentWord: currentWord => set({ currentWord }),
-    setTdChoice: tdChoice => set({ tdChoice }),
+
     setBsSpin: bsSpin => set({ bsSpin }),
     setBsAnswer: bsAnswer => set({ bsAnswer }),
     setWatchState: watch => set(s => ({ watch, watchNonce: s.watchNonce + 1 })),

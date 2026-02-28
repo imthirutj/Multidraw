@@ -18,7 +18,7 @@ export function registerChatHandlers(io: IoServer, socket: AppSocket, gameServic
         if (!player || player.hasGuessedCorrectly) return;
 
         // Non-drawing modes use chat only (no guessing/scoring).
-        if (room.gameType === 'watch_together' || room.gameType === 'truth_or_dare') {
+        if (room.gameType === 'watch_together' || room.gameType === 'bottle_spin') {
             io.to(roomCode).emit('chat:message', {
                 type: 'chat',
                 username,

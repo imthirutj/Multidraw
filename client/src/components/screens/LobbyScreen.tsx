@@ -8,9 +8,8 @@ const randomAvatar = () => AVATARS[Math.floor(Math.random() * AVATARS.length)];
 
 const GAME_MODES = [
     { id: 'drawing', name: 'Draw & Guess', icon: '🎨', desc: 'Draw pictures and let others guess the word!' },
-    { id: 'truth_or_dare', name: 'Truth or Dare', icon: '🎭', desc: 'Reveal secrets or do crazy challenges.' },
     { id: 'bottle_spin', name: 'Bottle Spin', icon: '🍾', desc: 'Spin the bottle, complete tasks and earn points.' },
-    { id: 'watch_together', name: 'Watch Together', icon: '🎬', desc: 'Watch  videos synced with friends.' }
+    { id: 'watch_together', name: 'Watch Together', icon: '🎬', desc: 'Watch videos synced with friends.' }
 ];
 
 export default function LobbyScreen() {
@@ -180,8 +179,8 @@ export default function LobbyScreen() {
                         {rooms.length === 0 ? (
                             <p className="no-rooms">No open rooms found</p>
                         ) : rooms.map(r => {
-                            const modeIcon = r.gameType === 'truth_or_dare' ? '🎭' : r.gameType === 'watch_together' ? '🎬' : r.gameType === 'bottle_spin' ? '🍾' : '🎨';
-                            const modeLabel = r.gameType === 'truth_or_dare' ? 'Truth or Dare' : r.gameType === 'watch_together' ? 'Watch Together' : r.gameType === 'bottle_spin' ? 'Bottle Spin' : 'Draw & Guess';
+                            const modeIcon = r.gameType === 'watch_together' ? '🎬' : r.gameType === 'bottle_spin' ? '🍾' : '🎨';
+                            const modeLabel = r.gameType === 'watch_together' ? 'Watch Together' : r.gameType === 'bottle_spin' ? 'Bottle Spin' : 'Draw & Guess';
                             return (
                                 <div key={r.roomCode} className="room-item">
                                     <div>
@@ -275,7 +274,7 @@ export default function LobbyScreen() {
                                                     <button type="button" className={`btn ${!isPublic ? 'btn-primary' : 'btn-ghost'}`} style={{ width: 'auto', padding: '10px 14px' }} onClick={() => setIsPublic(false)}>🔒 Private</button>
                                                 </div>
                                             </div>
-                                            {mode.id !== 'truth_or_dare' && mode.id !== 'watch_together' && (
+                                            {mode.id !== 'watch_together' && (
                                                 <div className="form-row">
                                                     <div className="form-group">
                                                         <label>Rounds</label>

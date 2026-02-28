@@ -4,7 +4,7 @@ import { useCanvas } from '../../hooks/useCanvas';
 import DrawToolbar from '../game/DrawToolbar';
 import PlayerSidebar from '../game/PlayerSidebar';
 import Chat from '../game/Chat';
-import TruthOrDareGame from '../game/TruthOrDareGame';
+
 import WatchTogetherGame from '../game/WatchTogetherGame';
 import BottleSpinGame from '../game/BottleSpinGame';
 import UserProfile from './UserProfile';
@@ -16,7 +16,7 @@ const TOTAL_TIME_REF = { current: 80 };
 export default function GameScreen() {
     const { round, totalRounds, hint, timeLeft, roundDuration, isDrawer, drawerSocketId, players, currentWord, mySocketId, gameType, isHost, hostTransferRequestedBy, roomCode, roomName } = useGameStore();
     const isWatchTogether = gameType === 'watch_together';
-    const isTruthOrDare = gameType === 'truth_or_dare';
+
     const isBottleSpin = gameType === 'bottle_spin';
 
     const me = players.find(p => p.socketId === mySocketId);
@@ -77,8 +77,7 @@ export default function GameScreen() {
                         <span className="logo-sm">🎨 MultiDraw</span>
                         {isWatchTogether ? (
                             <div className="round-badge mobile-hide">🎬 Watch Together</div>
-                        ) : isTruthOrDare ? (
-                            <div className="round-badge mobile-hide">🎭 Truth or Dare</div>
+
                         ) : isBottleSpin ? (
                             <div className="round-badge mobile-hide">🍾 Bottle Spin</div>
                         ) : (
@@ -89,8 +88,7 @@ export default function GameScreen() {
                     <div className="topbar-center">
                         {isWatchTogether ? (
                             <div className="word-display">🎬 Watch Together</div>
-                        ) : isTruthOrDare ? (
-                            <div className="word-display">🎭 Truth or Dare</div>
+
                         ) : isBottleSpin ? (
                             <div className="word-display">🍾 Bottle Spin</div>
                         ) : isDrawer || hasGuessed ? (
@@ -127,8 +125,7 @@ export default function GameScreen() {
                                 />
                             </label>
                         )}
-                        {!isWatchTogether && isDrawer && !isTruthOrDare && !isBottleSpin && <div className="drawing-tag">✏️ You are drawing!</div>}
-                        {!isWatchTogether && isDrawer && (isTruthOrDare || isBottleSpin) && <div className="drawing-tag">✅ It's your turn!</div>}
+                        {!isWatchTogether && isDrawer && (isBottleSpin ? <div className="drawing-tag">✅ It's your turn!</div> : <div className="drawing-tag">✏️ You are drawing!</div>)}
                     </div>
 
                     <div className="topbar-right">
@@ -218,8 +215,6 @@ export default function GameScreen() {
             {/* Main Body */}
             {isWatchTogether ? (
                 <WatchTogetherGame />
-            ) : isTruthOrDare ? (
-                <TruthOrDareGame />
             ) : isBottleSpin ? (
                 <BottleSpinGame />
             ) : (

@@ -57,9 +57,7 @@ export interface ClientToServerEvents {
     'room:kick': (payload: { targetSocketId: string }) => void;
     'room:delete': () => void;
     'canvas:respond': (payload: { dataURL: string; toSocketId: string }) => void;
-    'td:choose': (payload: { choice: 'truth' | 'dare' }) => void;
-    'td:submit_prompt': (payload: { prompt: string }) => void;
-    'td:next_turn': () => void;
+
 
     // Bottle Spin
     'bs:spin': (payload: { rotationOffset: number; targetIndex: number; promptType: 'truth' | 'dare'; promptText: string }) => void;
@@ -112,8 +110,7 @@ export interface ServerToClientEvents {
     'canvas:request': (payload: { requesterSocketId: string }) => void;
     'canvas:sync': (payload: { dataURL: string }) => void;
 
-    'td:chosen': (payload: { choice: 'truth' | 'dare'; prompt?: string }) => void;
-    'td:prompt_ready': (payload: { prompt: string }) => void;
+
 
     // Bottle Spin
     'bs:spun': (payload: { rotationOffset: number; targetIndex: number; targetSocketId: string; promptType: 'truth' | 'dare'; promptText: string }) => void;
@@ -146,8 +143,7 @@ export interface RoundStartPayload {
     totalRounds: number;
     drawerSocketId: string;
     drawerName: string;
-    answererSocketId?: string;
-    answererName?: string;
+
     hint: string;
     timeLeft: number;
 }
