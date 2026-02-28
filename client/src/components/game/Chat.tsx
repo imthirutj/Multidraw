@@ -17,17 +17,23 @@ export default function Chat({ variant = 'default', className = '' }: { variant?
     // Controls manual visibility and tracks unread count when hidden
     const [isHistoryVisible, setIsHistoryVisible] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [isHovering, setIsHovering] = useState(false);
     const prevMsgCountRef = useRef(chatMessages.length);
 
-    // Auto-hide history after 7 seconds when toggled or new message arrives
+    // Auto-reveal on new message and auto-hide after 7 seconds
     useEffect(() => {
-        if (isHistoryVisible) {
+        const isNewMsg = chatMessages.length > prevMsgCountRef.current;
+        if (isNewMsg) {
+            setIsHistoryVisible(true);
+        }
+
+        if (isHistoryVisible && !isHovering) {
             const timer = setTimeout(() => {
                 setIsHistoryVisible(false);
             }, 7000);
             return () => clearTimeout(timer);
         }
-    }, [isHistoryVisible, chatMessages.length]);
+    }, [isHistoryVisible, chatMessages.length, isHovering]);
 
     // Auto-scroll AND unread tracking logic
     useEffect(() => {
@@ -94,7 +100,14 @@ export default function Chat({ variant = 'default', className = '' }: { variant?
     }, [showGifMenu, gifSearch]);
 
     return (
-        <div className={`chat-area ${variant === 'overlay' ? 'overlay-chat' : ''} ${!isOpen ? 'closed' : ''} ${className}`}>
+        <div
+            className={`chat-area ${variant === 'overlay' ? 'overlay-chat' : ''} ${!isOpen ? 'closed' : ''} ${className}`}
+            onMouseEnter={() => {
+                setIsHovering(true);
+                if (isHistoryVisible) setUnreadCount(0);
+            }}
+            onMouseLeave={() => setIsHovering(false)}
+        >
 
             {/* When closed: pill to open chat — positions via CSS (absolute on desktop, below-video on mobile) */}
             {variant === 'overlay' && !isOpen && (

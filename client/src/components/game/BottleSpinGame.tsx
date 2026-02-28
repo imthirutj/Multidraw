@@ -350,8 +350,10 @@ export default function BottleSpinGame() {
                 {/* Pre-spin state */}
                 {!bsSpin && !isSpinning && (
                     <div style={{
-                        background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)',
+                        background: 'rgba(15, 15, 26, 0.98)', border: '1px solid var(--border)',
                         borderRadius: 16, padding: '10px 14px',
+                        position: 'relative', zIndex: 10,
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
                     }}>
                         {isSpinner ? (
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -401,8 +403,10 @@ export default function BottleSpinGame() {
                 {/* Selecting Prompt state (After spin, before prompt is set) */}
                 {showPromptMode && bsSpin && !bsSpin.promptText && (
                     <div style={{
-                        background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)',
+                        background: 'rgba(15, 15, 26, 0.98)', border: '1px solid var(--border)',
                         borderRadius: 16, padding: '16px', animation: 'bsSlideUp 0.4s ease',
+                        position: 'relative', zIndex: 10,
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
                     }}>
                         {isSpinner ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -477,11 +481,13 @@ export default function BottleSpinGame() {
                 {/* Task/Question state */}
                 {bsSpin && !isSpinning && showTask && (
                     <div style={{
-                        background: 'rgba(255,255,255,0.04)',
+                        background: 'rgba(15, 15, 26, 0.98)',
                         border: `1px solid ${bsSpin.promptType === 'truth' ? 'rgba(16,185,129,0.45)' : 'rgba(244,63,94,0.45)'}`,
                         borderRadius: 16, padding: '12px 14px',
                         display: 'flex', flexDirection: 'column', gap: 9,
                         animation: 'bsSlideUp 0.4s ease',
+                        position: 'relative', zIndex: 10,
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
                     }}>
                         {/* Header row */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -586,17 +592,27 @@ export default function BottleSpinGame() {
                 }
                 .bs-floating-chat .chat-messages {
                     position: absolute;
-                    bottom: 100%;
+                    top: -460px;
                     left: 0;
                     right: 0;
-                    max-height: 300px;
-                    background: transparent !important; /* Fully transparent background */
+                    max-height: 200px;
+                    background: transparent !important;
                     -webkit-mask-image: linear-gradient(to top, black 50%, transparent 100%);
                     mask-image: linear-gradient(to top, black 50%, transparent 100%);
-                    pointer-events: none !important;
-                    padding: 0 10px 15px;
+                    padding: 0 10px;
                     margin: 0;
-                    z-index: 50;
+                    z-index: 5;
+                    display: flex;
+                    flex-direction: column;
+                    scrollbar-width: thin;
+                    scrollbar-color: rgba(255,255,255,0.2) transparent;
+                }
+                .bs-floating-chat .chat-messages::-webkit-scrollbar {
+                    width: 4px;
+                }
+                .bs-floating-chat .chat-messages::-webkit-scrollbar-thumb {
+                    background: rgba(255,255,255,0.2);
+                    border-radius: 4px;
                 }
                 .bs-floating-chat .chat-msg {
                     pointer-events: none !important;
