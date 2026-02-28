@@ -660,7 +660,7 @@ export default function WatchTogetherGame() {
                                     style={{
                                         position: 'absolute',
                                         right: 12,
-                                        bottom: 12,
+                                        top: 52,
                                         width: 28,
                                         height: 28,
                                         borderRadius: '999px',
@@ -716,7 +716,7 @@ export default function WatchTogetherGame() {
                                     style={{
                                         position: 'absolute',
                                         right: 12,
-                                        bottom: 12,
+                                        top: 52,
                                         width: 28,
                                         height: 28,
                                         borderRadius: '999px',

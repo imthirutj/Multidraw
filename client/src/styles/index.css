@@ -1225,11 +1225,10 @@ input[type="range"] {
 
 .chat-area.overlay-chat {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    height: 260px;
+    bottom: 0px;
+    left: 4px;
+    width: min(400px, calc(100% - 8px));
+    height: 300px;
     max-height: 55vh;
     z-index: 50;
     background: transparent;
@@ -1240,34 +1239,31 @@ input[type="range"] {
 }
 
 .chat-area.overlay-chat.closed {
-    height: auto;
-    max-height: 200px;
-    background: transparent;
+    height: 40px;
+    /* Only enough to show the 'Chat' button */
+    pointer-events: none;
 }
 
 .chat-area.overlay-chat .chat-messages {
-    pointer-events: auto;
-    /* Must be explicitly scrollable — base class has overflow:hidden */
+    pointer-events: none;
+    /* Let clicks pass through empty space to the video */
     overflow-y: auto;
-    /* Claim vertical touch scroll so swipes don't pass through to video */
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
     padding-bottom: 8px;
-    /* Fade-out mask at the top so messages fade in gracefully */
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 30%);
-    mask-image: linear-gradient(to bottom, transparent 0%, black 30%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 15%);
     background: transparent;
 }
 
-.chat-area.overlay-chat.closed .chat-messages {
-    /* Scrollable even when the input box is hidden */
+.chat-area.overlay-chat .chat-msg {
     pointer-events: auto;
-    touch-action: pan-y;
-    -webkit-overflow-scrolling: touch;
-    max-height: 160px;
-    overflow-y: auto;
-    padding-bottom: 50px;
-    /* space for the '💬 Chat' open button */
+    /* Chat messages themselves are interactive */
+}
+
+.chat-area.overlay-chat.closed .chat-messages {
+    display: none;
+    /* Hide messages completely when closed in overlay mode */
 }
 
 /* Fully transparent message bubbles — text with a subtle drop shadow for readability */
