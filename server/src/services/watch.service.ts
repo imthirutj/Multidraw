@@ -1,4 +1,4 @@
-import type { WatchTogetherStatePayload } from '../types/game.types';
+import type { WatchTogetherStatePayload, PublicBookmark } from '../types/game.types';
 
 interface WatchTogetherState {
     url: string | null;
@@ -19,9 +19,32 @@ function clampTime(t: number): number {
 
 export class WatchTogetherService {
     private readonly states = new Map<string, WatchTogetherState>();
+    private readonly bookmarks = new Map<string, PublicBookmark[]>();
 
     clearRoom(roomCode: string): void {
         this.states.delete(roomCode);
+        this.bookmarks.delete(roomCode);
+    }
+
+    getPublicBookmarks(roomCode: string): PublicBookmark[] {
+        return this.bookmarks.get(roomCode) || [];
+    }
+
+    addPublicBookmark(roomCode: string, bookmark: PublicBookmark): PublicBookmark[] {
+        const existing = this.bookmarks.get(roomCode) || [];
+        if (!existing.some(b => b.url === bookmark.url)) {
+            const next = [bookmark, ...existing];
+            this.bookmarks.set(roomCode, next);
+            return next;
+        }
+        return existing;
+    }
+
+    removePublicBookmark(roomCode: string, url: string): PublicBookmark[] {
+        const existing = this.bookmarks.get(roomCode) || [];
+        const next = existing.filter(b => b.url !== url);
+        this.bookmarks.set(roomCode, next);
+        return next;
     }
 
     getSnapshot(roomCode: string): WatchTogetherStatePayload {

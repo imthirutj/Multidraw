@@ -148,6 +148,10 @@ export function useSocketEvents(): void {
             store.setWatchState(payload);
         });
 
+        socket.on('wt:bookmarks', payload => {
+            useGameStore.getState().setWatchBookmarks(payload.bookmarks);
+        });
+
         socket.on('error', ({ message }) => {
             store.addChat({ type: 'system', text: `⚠️ ${message}` });
         });

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Player, ChatMessage, Screen, GameStatus, WatchTogetherStatePayload } from '../types/game.types';
+import type { Player, ChatMessage, Screen, GameStatus, WatchTogetherStatePayload, PublicBookmark } from '../types/game.types';
 
 interface GameState {
     // Identity
@@ -34,6 +34,7 @@ interface GameState {
     // Watch Together
     watch: WatchTogetherStatePayload;
     watchNonce: number; // increments on each incoming watch sync
+    watchBookmarks: PublicBookmark[];
 
     // UI
     screen: Screen;
@@ -54,6 +55,7 @@ interface GameState {
     setTdChoice: (val: GameState['tdChoice']) => void;
     setBsSpin: (val: GameState['bsSpin']) => void;
     setWatchState: (val: WatchTogetherStatePayload) => void;
+    setWatchBookmarks: (bookmarks: PublicBookmark[]) => void;
     addChat: (msg: ChatMessage) => void;
     setLeaderboard: (lb: Player[]) => void;
     setFatalError: (err: string | null) => void;
@@ -86,6 +88,7 @@ const initialState = {
     bsSpin: null as GameState['bsSpin'],
     watch: { url: null, isPlaying: false, currentTime: 0, updatedAtMs: 0 } as WatchTogetherStatePayload,
     watchNonce: 0,
+    watchBookmarks: [] as PublicBookmark[],
     screen: 'lobby' as Screen,
     chatMessages: [] as ChatMessage[],
     leaderboard: [] as Player[],
@@ -107,6 +110,7 @@ export const useGameStore = create<GameState>(set => ({
     setTdChoice: tdChoice => set({ tdChoice }),
     setBsSpin: bsSpin => set({ bsSpin }),
     setWatchState: watch => set(s => ({ watch, watchNonce: s.watchNonce + 1 })),
+    setWatchBookmarks: watchBookmarks => set({ watchBookmarks }),
     addChat: msg =>
         set(s => ({ chatMessages: [...s.chatMessages.slice(-200), msg] })),
     setLeaderboard: leaderboard => set({ leaderboard }),

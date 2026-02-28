@@ -87,6 +87,7 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
 
         if (room.gameType === 'watch_together') {
             socket.emit('wt:state', watchService.getSnapshot(roomCode));
+            socket.emit('wt:bookmarks', { bookmarks: watchService.getPublicBookmarks(roomCode) });
         }
 
         // If joining mid-game, explicitly sync them into the current round instantly
@@ -151,6 +152,7 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
 
         if (room.gameType === 'watch_together') {
             io.to(roomCode).emit('wt:state', watchService.getSnapshot(roomCode));
+            io.to(roomCode).emit('wt:bookmarks', { bookmarks: watchService.getPublicBookmarks(roomCode) });
             io.to(roomCode).emit('chat:message', { type: 'system', text: '🎬 Watch Together session started.' });
             return;
         }

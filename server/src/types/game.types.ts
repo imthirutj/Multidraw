@@ -74,6 +74,8 @@ export interface ClientToServerEvents {
     'wt:pause': (payload: { time: number }) => void;
     'wt:seek': (payload: { time: number }) => void;
     'wt:sync_request': () => void;
+    'wt:bookmark:add': (payload: { url: string; title?: string; thumbnailUrl?: string }) => void;
+    'wt:bookmark:remove': (payload: { url: string }) => void;
 }
 
 // ─── Socket Events: Server → Client ──────────────────────────────────────────
@@ -121,6 +123,7 @@ export interface ServerToClientEvents {
 
     // Watch Together
     'wt:state': (payload: WatchTogetherStatePayload) => void;
+    'wt:bookmarks': (payload: { bookmarks: PublicBookmark[] }) => void;
 
     error: (payload: { message: string }) => void;
 }
@@ -188,6 +191,15 @@ export interface WatchTogetherStatePayload {
     currentTime: number;
     updatedAtMs: number;
     updatedBy?: string;
+}
+
+export interface PublicBookmark {
+    id: string;
+    url: string;
+    title?: string;
+    thumbnailUrl?: string;
+    savedBy: string; // username of who saved it
+    savedAt: number;
 }
 
 // ─── API ──────────────────────────────────────────────────────────────────────

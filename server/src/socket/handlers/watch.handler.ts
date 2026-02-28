@@ -22,6 +22,34 @@ export function registerWatchHandlers(io: IoServer, socket: AppSocket, watch: Wa
         const { roomCode } = socket.data;
         if (!roomCode) return;
         socket.emit('wt:state', watch.getSnapshot(roomCode));
+        socket.emit('wt:bookmarks', { bookmarks: watch.getPublicBookmarks(roomCode) });
+    });
+
+    socket.on('wt:bookmark:add', ({ url, title, thumbnailUrl }) => {
+        const { roomCode, username } = socket.data;
+        if (!roomCode) return;
+
+        const trimmed = (url || '').trim();
+        if (!isValidHttpUrl(trimmed)) return socket.emit('error', { message: 'Invalid bookmark URL' });
+
+        const bookmarks = watch.addPublicBookmark(roomCode, {
+            id: `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+            url: trimmed,
+            title,
+            thumbnailUrl,
+            savedBy: username ?? 'Someone',
+            savedAt: Date.now()
+        });
+
+        io.to(roomCode).emit('wt:bookmarks', { bookmarks });
+    });
+
+    socket.on('wt:bookmark:remove', ({ url }) => {
+        const { roomCode } = socket.data;
+        if (!roomCode) return;
+
+        const bookmarks = watch.removePublicBookmark(roomCode, url);
+        io.to(roomCode).emit('wt:bookmarks', { bookmarks });
     });
 
     socket.on('wt:set_video', async ({ url }) => {

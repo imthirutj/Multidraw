@@ -52,6 +52,15 @@ export interface WatchTogetherStatePayload {
     updatedBy?: string;
 }
 
+export interface PublicBookmark {
+    id: string;
+    url: string;
+    title?: string;
+    thumbnailUrl?: string;
+    savedBy: string; // username of who saved it
+    savedAt: number;
+}
+
 export interface RoomListItem {
     roomCode: string;
     roomName: string;
@@ -67,6 +76,11 @@ export interface RoomListItem {
 export interface ClientToServerEvents {
     'bs:spin': (payload: { rotationOffset: number; targetIndex: number; promptType: 'truth' | 'dare'; promptText: string }) => void;
     'bs:resolve': (payload: { action: 'complete' | 'skip' | 'refuse'; pointDelta: number; answer?: string }) => void;
+    'wt:pause': (payload: { time: number }) => void;
+    'wt:seek': (payload: { time: number }) => void;
+    'wt:sync_request': () => void;
+    'wt:bookmark:add': (payload: { url: string; title?: string; thumbnailUrl?: string }) => void;
+    'wt:bookmark:remove': (payload: { url: string }) => void;
     'room:kick': (payload: { targetSocketId: string }) => void;
     'room:delete': () => void;
 }
@@ -74,4 +88,5 @@ export interface ClientToServerEvents {
 export interface ServerToClientEvents {
     'bs:spun': (payload: { rotationOffset: number; targetIndex: number; targetSocketId: string; promptType: 'truth' | 'dare'; promptText: string }) => void;
     'room:kicked': () => void;
+    'wt:bookmarks': (payload: { bookmarks: PublicBookmark[] }) => void;
 }
