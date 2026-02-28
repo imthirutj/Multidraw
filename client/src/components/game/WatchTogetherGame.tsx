@@ -779,10 +779,12 @@ export default function WatchTogetherGame() {
                         >
                             {/* Header */}
                             <div style={{ padding: '18px 20px 0', borderBottom: '1px solid var(--border)' }}>
-                                <h3 style={{ margin: '0 0 10px', fontSize: 17 }}>📹 Set Video</h3>
+                                <h3 style={{ margin: '0 0 10px', fontSize: 17 }}>
+                                    {modalTab === 'set' ? '📹 Set Video' : '🔖 Bookmarks'}
+                                </h3>
                                 {/* Tabs */}
                                 <div style={{ display: 'flex', gap: 0 }}>
-                                    {(['set', 'bookmarks'] as const).map(tab => (
+                                    {(['set', 'bookmarks'] as const).filter(tab => tab !== 'set' || isHost).map(tab => (
                                         <button
                                             key={tab}
                                             onClick={() => setModalTab(tab)}
