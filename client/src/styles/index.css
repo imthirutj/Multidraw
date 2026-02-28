@@ -749,10 +749,102 @@ select option {
     border-color: var(--accent) !important;
     color: var(--accent) !important;
     letter-spacing: 8px;
-    /* Slightly wider to emphasize they solved it */
 }
 
-.word-display-input {
+/* New/Refined Topbar Layout */
+.topbar-main-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 16px;
+}
+
+.actions-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.host-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.danger-btn {
+    color: #ef4444 !important;
+    border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.danger-btn:hover {
+    background: rgba(239, 68, 68, 0.1) !important;
+    border-color: #ef4444 !important;
+}
+
+.room-info-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 0 6px;
+    gap: 12px;
+    width: 100%;
+}
+
+.room-meta-pill {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border);
+    padding: 4px 14px;
+    border-radius: 40px;
+    font-size: 11px;
+    color: var(--text-muted);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.room-name-label {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 700;
+}
+
+.room-code-label {
+    background: rgba(124, 92, 252, 0.15);
+    color: var(--primary-light);
+    padding: 1px 8px;
+    border-radius: 6px;
+    font-family: monospace;
+    letter-spacing: 1.5px;
+    font-weight: 800;
+}
+
+.copy-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    opacity: 0.6;
+    padding: 0;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.copy-btn:hover {
+    opacity: 1;
+    transform: scale(1.15);
+}
+
+.mobile-only-btn {
+    display: none;
+}
+
+.mobile-hide {
+    display: block;
+}
+
+.drawing-tag {
     background: rgba(255, 255, 255, 0.07);
     border: 1px solid var(--border);
     border-radius: 30px;
@@ -1552,31 +1644,138 @@ input[type="range"] {
 /* ─── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
     .game-topbar {
-        flex-wrap: wrap;
-        padding: 8px 10px;
+        flex-direction: column;
+        padding: 8px 12px 6px;
         gap: 8px;
+        background: rgba(15, 15, 26, 0.98);
+        border-bottom: 2px solid var(--border);
+    }
+
+    .topbar-main-row {
+        gap: 4px;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        overflow: hidden;
+    }
+
+    .mobile-hide {
+        display: none !important;
     }
 
     .topbar-center {
-        order: 3;
-        flex-basis: 100%;
-        margin-top: 4px;
+        order: 2;
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        margin: 0 4px;
+        min-width: 0;
+        overflow: hidden;
     }
 
-    .word-display {
-        font-size: 18px;
-        letter-spacing: 4px;
-        min-width: auto;
-        padding: 4px 16px;
+    .word-display,
+    .word-display-input {
+        font-size: 11px;
+        letter-spacing: 0.2px;
+        min-width: 0;
+        width: auto;
+        padding: 5px 8px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.05);
+        box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 120px;
+    }
+
+    .topbar-left {
+        order: 1;
+        flex: 0 1 auto;
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .topbar-right {
+        order: 3;
+        flex: 0 1 auto;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        min-width: 0;
+    }
+
+    .actions-wrapper {
+        gap: 4px;
+    }
+
+    .room-info-row {
+        order: 4;
+        width: 100%;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 12px;
+        margin-top: 2px;
+        padding: 4px 10px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .room-meta-pill {
+        background: transparent;
+        border: none;
+        padding: 2px 0;
+        font-size: 10px;
+        box-shadow: none;
+        flex: 1;
+        justify-content: center;
+    }
+
+    .room-name-label {
+        max-width: 100px;
+    }
+
+    .mobile-only-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .mobile-only-btn.danger {
+        color: #ff4b4b;
+        border-color: rgba(255, 75, 75, 0.2);
+        background: rgba(255, 75, 75, 0.05);
     }
 
     .logo-sm {
-        display: none;
-        /* Hide logo text on small screens to save space */
+        font-size: 10px;
+        letter-spacing: -0.2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 75px;
     }
 
-    .lobby-cards {
-        grid-template-columns: 1fr;
+    .actions-wrapper {
+        gap: 8px;
+    }
+
+    .circular-chart {
+        width: 28px;
+        height: 28px;
+    }
+
+    .timer-num {
+        font-size: 10px;
     }
 
     .game-body {
@@ -1597,14 +1796,12 @@ input[type="range"] {
         overflow-y: hidden;
     }
 
-    /* On mobile the standalone chat is hidden — overlay chat is used instead */
     .chat-area:not(.overlay-chat) {
         width: 100%;
         height: 250px;
         flex: none;
     }
 
-    /* Watch Together: make the canvas-area a stacking context so overlay-chat sits on top */
     .wt-video-wrapper {
         position: relative;
         flex: 1;
@@ -1612,28 +1809,25 @@ input[type="range"] {
     }
 
     .logo-text {
-        font-size: 36px;
+        font-size: 32px;
     }
 
-    /* On mobile: closed overlay button moves BELOW the video (not over it) */
     .chat-area.overlay-chat.closed {
         position: static;
         height: auto;
         max-height: none;
         overflow: visible;
-        /* Small gap below the video */
         margin-top: 6px;
     }
 
     .overlay-toggle-btn {
-        /* Override the absolute positioning — sit in normal document flow */
         position: static;
         display: block;
         width: 100%;
-        border-radius: 10px;
+        border-radius: 12px;
         text-align: center;
-        padding: 10px;
+        padding: 12px;
         box-shadow: none;
-        font-size: 0.9rem;
+        font-size: 0.95rem;
     }
 }
