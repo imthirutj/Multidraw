@@ -387,10 +387,10 @@ select option {
 }
 
 .lobby-cards {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
+    display: flex;
+    flex-direction: column;
     width: 100%;
+    margin-bottom: 20px;
 }
 
 .card {
@@ -420,6 +420,8 @@ select option {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
+    /* Added flex-wrap */
     gap: 10px;
     transition: all 0.2s;
 }
@@ -470,6 +472,7 @@ select option {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 12px;
     margin-top: 15px;
+    width: 100%;
 }
 
 .game-mode-card {

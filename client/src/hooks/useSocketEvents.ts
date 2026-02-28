@@ -66,15 +66,11 @@ export function useSocketEvents(): void {
         });
 
         socket.on('room:kicked', () => {
-            alert('You have been kicked from the room by the host.');
-            useGameStore.getState().reset();
-            window.location.reload(); // Quickest way to fully detach and reset state safely
+            useGameStore.getState().setFatalError('You have been kicked from the room by the host.');
         });
 
         socket.on('room:destroyed', () => {
-            alert('The room has been deleted by the host.');
-            useGameStore.getState().reset();
-            window.location.reload();
+            useGameStore.getState().setFatalError('The room has been deleted by the host.');
         });
 
         socket.on('game:starting', () => {

@@ -10,7 +10,7 @@ import UserProfile from './components/screens/UserProfile';
 
 function AuthenticatedApp() {
     useSocketEvents(); // registers all socket listeners once
-    const screen = useGameStore(s => s.screen);
+    const { screen, fatalError } = useGameStore(s => ({ screen: s.screen, fatalError: s.fatalError }));
     return (
         <>
             {screen !== 'game' && screen !== 'waiting' && <UserProfile />}
@@ -18,6 +18,27 @@ function AuthenticatedApp() {
             {screen === 'waiting' && <WaitingScreen />}
             {screen === 'game' && <GameScreen />}
             {screen === 'gameover' && <GameOverScreen />}
+
+            {/* Fatal Error Modal */}
+            {fatalError && (
+                <div className="modal-overlay" style={{ zIndex: 9999 }}>
+                    <div className="modal-content">
+                        <h3>Notice</h3>
+                        <p>{fatalError}</p>
+                        <div className="modal-actions" style={{ justifyContent: 'center' }}>
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => {
+                                    useGameStore.getState().reset();
+                                    window.location.reload();
+                                }}
+                            >
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

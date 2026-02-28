@@ -159,7 +159,7 @@ export default function LobbyScreen() {
                 {error && <div className="error-banner">⚠️ {error}</div>}
 
                 {/* Shared Player Name Input */}
-                <div className="card glass-card" style={{ marginBottom: '20px', padding: '15px' }}>
+                <div className="card glass-card" style={{ width: '100%', marginBottom: '20px', padding: '15px' }}>
                     <div className="form-group" style={{ marginBottom: 0 }}>
                         <label>Logged in as</label>
                         <input
@@ -171,7 +171,7 @@ export default function LobbyScreen() {
                 </div>
 
                 {/* Available Rooms Section (Now on top) */}
-                <div className="card glass-card" style={{ marginBottom: '20px' }}>
+                <div className="card glass-card" style={{ width: '100%', marginBottom: '20px' }}>
                     <h2 style={{ marginBottom: '15px' }}>🌐 Available Rooms</h2>
                     <div className="rooms-list" style={{ maxHeight: '200px', overflowY: 'auto', marginTop: 0 }}>
                         {rooms.length === 0 ? (
@@ -210,76 +210,6 @@ export default function LobbyScreen() {
                 </div>
 
                 <div className="lobby-cards">
-                    {/* Create Room */}
-                    <div className="card glass-card">
-                        <h2>🏠 Create Room</h2>
-                        <div className="form-group">
-                            <label>Room Name</label>
-                            <input value={roomName} onChange={e => setRoomName(e.target.value)} placeholder="My Awesome Room" maxLength={30} />
-                        </div>
-                        <div className="form-group">
-                            <label>Game Mode</label>
-                            <select ref={gameTypeSelectRef} value={gameType} onChange={e => setGameType(e.target.value)}>
-                                <option value="drawing">🎨 Draw & Guess</option>
-                                <option value="truth_or_dare">🎭 Truth or Dare</option>
-                                <option value="bottle_spin">🍾 Bottle Spin</option>
-                                <option value="watch_together">🎬 Watch Together</option>
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label>Room Visibility</label>
-                            <div style={{ display: 'flex', gap: 10 }}>
-                                <button
-                                    type="button"
-                                    className={`btn ${isPublic ? 'btn-primary' : 'btn-ghost'}`}
-                                    style={{ width: 'auto', padding: '10px 14px' }}
-                                    onClick={() => setIsPublic(true)}
-                                >
-                                    🌐 Public
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`btn ${!isPublic ? 'btn-primary' : 'btn-ghost'}`}
-                                    style={{ width: 'auto', padding: '10px 14px' }}
-                                    onClick={() => setIsPublic(false)}
-                                >
-                                    🔒 Private
-                                </button>
-                            </div>
-                            <div style={{ marginTop: 6, color: 'var(--text-muted)', fontSize: 12 }}>
-                                {isPublic ? 'Shows in Available Rooms.' : 'Hidden from Available Rooms (join by code/link only).'}
-                            </div>
-                        </div>
-                        {gameType !== 'truth_or_dare' && gameType !== 'watch_together' && (
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Rounds</label>
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        max={20}
-                                        value={totalRounds}
-                                        onChange={e => setTotalRounds(e.target.value)}
-                                        placeholder="3"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Time / Round (mins)</label>
-                                    <input
-                                        type="number"
-                                        min={0.5}
-                                        max={10}
-                                        step="0.5"
-                                        value={roundDuration}
-                                        onChange={e => setRoundDuration(e.target.value)}
-                                        placeholder="1.5"
-                                    />
-                                </div>
-                            </div>
-                        )}
-                        <button className="btn btn-primary" onClick={handleCreate}>Create Room ✨</button>
-                    </div>
-
                     {/* Join Room Manually */}
                     <div className="card glass-card">
                         <h2>🚪 Join via Code</h2>
@@ -316,20 +246,20 @@ export default function LobbyScreen() {
             {/* Game Mode Detail Modal */}
             {selectedMode && (
                 <div className="modal-overlay" onClick={() => setSelectedMode(null)} style={{ alignItems: 'flex-start', paddingTop: '5vh', overflowY: 'auto' }}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '800px', margin: 'auto' }}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '95%', maxWidth: '800px', margin: 'auto', padding: '20px' }}>
                         {(() => {
                             const mode = GAME_MODES.find(m => m.id === selectedMode)!;
                             const modeRooms = rooms.filter(r => r.gameType === mode.id);
                             return (
                                 <>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '15px', marginBottom: '20px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '15px', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
                                         <h2 style={{ margin: 0 }}>{mode.icon} {mode.name}</h2>
                                         <button className="btn btn-ghost-sm" onClick={() => setSelectedMode(null)} style={{ width: 'auto' }}>Close</button>
                                     </div>
 
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '15px', alignItems: 'start' }}>
                                         {/* Create Form */}
-                                        <div className="card" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                                        <div className="card" style={{ background: 'rgba(0,0,0,0.2)', padding: '15px' }}>
                                             <h3 style={{ marginBottom: 15 }}>Create Room</h3>
                                             <div className="form-group">
                                                 <label>Room Name</label>
@@ -337,7 +267,7 @@ export default function LobbyScreen() {
                                             </div>
                                             <div className="form-group">
                                                 <label>Room Visibility</label>
-                                                <div style={{ display: 'flex', gap: 10 }}>
+                                                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                                                     <button type="button" className={`btn ${isPublic ? 'btn-primary' : 'btn-ghost'}`} style={{ width: 'auto', padding: '10px 14px' }} onClick={() => setIsPublic(true)}>🌐 Public</button>
                                                     <button type="button" className={`btn ${!isPublic ? 'btn-primary' : 'btn-ghost'}`} style={{ width: 'auto', padding: '10px 14px' }} onClick={() => setIsPublic(false)}>🔒 Private</button>
                                                 </div>
@@ -358,7 +288,7 @@ export default function LobbyScreen() {
                                         </div>
 
                                         {/* Active Rooms */}
-                                        <div className="card" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                                        <div className="card" style={{ background: 'rgba(0,0,0,0.2)', padding: '15px' }}>
                                             <h3 style={{ marginBottom: 15 }}>Active {mode.name} Rooms</h3>
                                             <div className="rooms-list" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                                                 {modeRooms.length === 0 ? (

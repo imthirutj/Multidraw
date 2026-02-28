@@ -39,6 +39,7 @@ interface GameState {
     screen: Screen;
     chatMessages: ChatMessage[];
     leaderboard: Player[];
+    fatalError: string | null;
 
     // Actions
     setMySocketId: (id: string) => void;
@@ -55,6 +56,7 @@ interface GameState {
     setWatchState: (val: WatchTogetherStatePayload) => void;
     addChat: (msg: ChatMessage) => void;
     setLeaderboard: (lb: Player[]) => void;
+    setFatalError: (err: string | null) => void;
     reset: () => void;
 }
 
@@ -87,6 +89,7 @@ const initialState = {
     screen: 'lobby' as Screen,
     chatMessages: [] as ChatMessage[],
     leaderboard: [] as Player[],
+    fatalError: null as string | null,
 };
 
 export const useGameStore = create<GameState>(set => ({
@@ -107,5 +110,6 @@ export const useGameStore = create<GameState>(set => ({
     addChat: msg =>
         set(s => ({ chatMessages: [...s.chatMessages.slice(-200), msg] })),
     setLeaderboard: leaderboard => set({ leaderboard }),
+    setFatalError: fatalError => set({ fatalError }),
     reset: () => set(initialState),
 }));
