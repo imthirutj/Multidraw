@@ -19,6 +19,16 @@ export default function Chat({ variant = 'default', className = '' }: { variant?
     const [unreadCount, setUnreadCount] = useState(0);
     const prevMsgCountRef = useRef(chatMessages.length);
 
+    // Auto-hide history after 7 seconds when toggled or new message arrives
+    useEffect(() => {
+        if (isHistoryVisible) {
+            const timer = setTimeout(() => {
+                setIsHistoryVisible(false);
+            }, 7000);
+            return () => clearTimeout(timer);
+        }
+    }, [isHistoryVisible, chatMessages.length]);
+
     // Auto-scroll AND unread tracking logic
     useEffect(() => {
         if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
