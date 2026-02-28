@@ -135,7 +135,7 @@ export default function BottleSpinGame() {
                         <div style={{
                             display: 'inline-block', padding: '5px 18px', borderRadius: 24,
                             fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase',
-                            letterSpacing: 1.5, color: '#fff', marginBottom: 20,
+                            letterSpacing: 1.5, color: '#fff', marginBottom: 16,
                             background: bsAnswer.action === 'complete'
                                 ? 'linear-gradient(135deg,#10b981,#059669)'
                                 : bsAnswer.action === 'skip'
@@ -144,6 +144,18 @@ export default function BottleSpinGame() {
                             boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
                         }}>
                             {bsAnswer.targetName} · {bsAnswer.action === 'complete' ? 'Answered!' : bsAnswer.action === 'skip' ? 'Skipped' : 'Refused!'}
+                        </div>
+
+                        {/* Question Visibility */}
+                        <div style={{ marginBottom: 20, animation: 'bsSlideUp 0.4s ease 0.1s both' }}>
+                            <div style={{ fontSize: '0.75rem', color: '#14b8a6', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>
+                                Challenged by {bsAnswer.spinnerName || 'Someone'}
+                            </div>
+                            {bsAnswer.question && (
+                                <div style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.7)', fontStyle: 'italic', lineHeight: 1.4, maxWidth: '300px', margin: '0 auto' }}>
+                                    "{bsAnswer.question}"
+                                </div>
+                            )}
                         </div>
 
                         {bsAnswer.answer ? (

@@ -306,6 +306,8 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         const targetSocketId = room.players[targetIndex]?.socketId;
         if (!targetSocketId) return;
 
+        await RoomRepository.save(roomCode, { currentWord: promptText });
+
         io.to(roomCode).emit('bs:spun', { rotationOffset, targetIndex, targetSocketId, promptType, promptText });
         io.to(roomCode).emit('chat:message', { type: 'system', text: `🍾 The bottle is spinning...` });
     });
@@ -330,12 +332,17 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         const player = room.players.find(p => p.socketId === socket.id);
         const name = player?.username || 'Someone';
 
+        const spinner = room.players.find(p => p.socketId === room.currentDrawer);
+        const spinnerName = spinner ? spinner.username : 'Someone';
+
         // Broadcast answer reveal to all players for prominent display
         io.to(roomCode).emit('bs:answered', {
             action,
             answer: answer || '',
             targetName: name,
             pointDelta,
+            spinnerName,
+            question: room.currentWord
         });
 
         if (action === 'complete') {

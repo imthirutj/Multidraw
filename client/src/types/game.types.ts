@@ -87,6 +87,7 @@ export interface ClientToServerEvents {
 
 export interface ServerToClientEvents {
     'bs:spun': (payload: { rotationOffset: number; targetIndex: number; targetSocketId: string; promptType: 'truth' | 'dare'; promptText: string }) => void;
+    'bs:answered': (payload: { action: 'complete' | 'skip' | 'refuse'; answer: string; targetName: string; pointDelta: number; spinnerName?: string; question?: string; }) => void;
     'room:kicked': () => void;
     'wt:bookmarks': (payload: { bookmarks: PublicBookmark[] }) => void;
 }

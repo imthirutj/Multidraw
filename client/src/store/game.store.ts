@@ -30,7 +30,7 @@ interface GameState {
     timeLeft: number;
     tdChoice: { choice: 'truth' | 'dare'; prompt?: string } | null;
     bsSpin: { rotationOffset: number; targetIndex: number; targetSocketId: string; promptType: 'truth' | 'dare'; promptText: string } | null;
-    bsAnswer: { action: 'complete' | 'skip' | 'refuse'; answer: string; targetName: string; pointDelta: number } | null;
+    bsAnswer: { action: 'complete' | 'skip' | 'refuse'; answer: string; targetName: string; pointDelta: number; spinnerName?: string; question?: string; } | null;
 
     // Watch Together
     watch: WatchTogetherStatePayload;

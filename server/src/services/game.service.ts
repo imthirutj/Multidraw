@@ -14,6 +14,7 @@ interface RoomTimer {
 
 export class GameService {
     private roomTimers = new Map<string, RoomTimer>();
+    private transitionTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
     constructor(private readonly io: IoServer) { }
 
@@ -171,6 +172,8 @@ export class GameService {
     }
 
     async endRound(roomCode: string): Promise<void> {
+        if (this.transitionTimers.has(roomCode)) return;
+
         this.clearTimer(roomCode);
         const room = await RoomRepository.findByCode(roomCode);
         if (!room) return;
@@ -184,14 +187,26 @@ export class GameService {
         this.io.to(roomCode).emit('round:end', { word: room.currentWord, players: room.players });
 
         const delay = 4_000;
+        const runNext = () => {
+            this.transitionTimers.delete(roomCode);
+            this.startRound(roomCode);
+        };
+        const runEnd = () => {
+            this.transitionTimers.delete(roomCode);
+            this.endGame(roomCode);
+        };
+
         // Truth or Dare and Bottle Spin never "finishes" — it just rotates turns indefinitely.
         if (room.gameType === 'truth_or_dare' || room.gameType === 'bottle_spin') {
-            setTimeout(() => this.startRound(roomCode), delay);
+            this.transitionTimers.set(roomCode, setTimeout(runNext, delay));
             return;
         }
 
-        if (room.currentRound >= room.totalRounds) setTimeout(() => this.endGame(roomCode), delay);
-        else setTimeout(() => this.startRound(roomCode), delay);
+        if (room.currentRound >= room.totalRounds) {
+            this.transitionTimers.set(roomCode, setTimeout(runEnd, delay));
+        } else {
+            this.transitionTimers.set(roomCode, setTimeout(runNext, delay));
+        }
     }
 
     async endGame(roomCode: string): Promise<void> {
@@ -206,6 +221,9 @@ export class GameService {
     clearTimer(roomCode: string): void {
         const t = this.roomTimers.get(roomCode);
         if (t) { clearInterval(t.interval); this.roomTimers.delete(roomCode); }
+
+        const transT = this.transitionTimers.get(roomCode);
+        if (transT) { clearTimeout(transT); this.transitionTimers.delete(roomCode); }
     }
 
     getTimeLeft(roomCode: string): number | null {
