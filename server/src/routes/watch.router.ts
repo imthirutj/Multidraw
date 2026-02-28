@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import * as cheerio from 'cheerio';
 import dns from 'dns/promises';
 import net from 'net';
+import { Readable } from 'node:stream';
 
 const router = Router();
 
@@ -287,6 +288,60 @@ router.get('/extract', async (req: Request, res: Response) => {
     } catch (e) {
         const msg = e instanceof Error ? e.message : 'Server error';
         return res.status(500).json({ error: msg });
+    }
+});
+
+router.get('/proxy', async (req: Request, res: Response) => {
+    try {
+        const url = String(req.query.url || '').trim();
+        if (!isValidHttpUrl(url)) return res.status(400).send('Invalid url');
+
+        const u = new URL(url);
+        await assertSafeRemoteUrl(u);
+
+        console.log(`[Proxy] Fetching: ${url}`);
+
+        const headers: Record<string, string> = {
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'accept': '*/*',
+            'referer': u.origin + '/',
+            'origin': u.origin,
+        };
+
+        const range = req.headers.range;
+        if (range) headers['range'] = range;
+
+        const remoteRes = await fetch(url, { headers });
+
+        console.log(`[Proxy] Remote Status: ${remoteRes.status} | Content-Type: ${remoteRes.headers.get('content-type')}`);
+
+        res.status(remoteRes.status);
+
+        // Forward important headers
+        const copy = ['content-type', 'content-length', 'content-range', 'accept-ranges', 'cache-control'];
+        copy.forEach(h => {
+            const v = remoteRes.headers.get(h);
+            if (v) res.setHeader(h, v);
+        });
+
+        // Basic open CORS for the proxy
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Headers', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+
+        if (!remoteRes.body || remoteRes.status === 204) return res.send('');
+
+        // Convert Web ReadableStream to Node Readable and pipe it
+        const readable = Readable.fromWeb(remoteRes.body as any);
+        readable.pipe(res);
+
+        req.on('close', () => {
+            readable.destroy();
+        });
+    } catch (e) {
+        if (!res.headersSent) {
+            res.status(500).send(e instanceof Error ? e.message : 'Proxy failed');
+        }
     }
 });
 

@@ -113,6 +113,7 @@ export default function WatchTogetherGame() {
     const [playBlocked, setPlayBlocked] = React.useState(false);
     const [durationSec, setDurationSec] = React.useState<number | null>(null);
     const [playError, setPlayError] = React.useState<string | null>(null);
+    const [useProxy, setUseProxy] = React.useState(false);
     const [showPicker, setShowPicker] = React.useState(false);
     const [isExpanded, setIsExpanded] = React.useState(false);
     const [showYouTubePicker, setShowYouTubePicker] = React.useState(false);
@@ -346,7 +347,10 @@ export default function WatchTogetherGame() {
 
     const setVideo = () => {
         if (!isHost) return;
-        const url = urlInput.trim();
+        let url = urlInput.trim();
+        if (useProxy && url && !url.includes('/api/watch/proxy')) {
+            url = `${window.location.origin}/api/watch/proxy?url=${encodeURIComponent(url)}`;
+        }
         socket.emit('wt:set_video', { url });
     };
 
@@ -379,8 +383,12 @@ export default function WatchTogetherGame() {
 
     const chooseVideo = (u: string) => {
         if (!isHost) return;
-        setUrlInput(u);
-        socket.emit('wt:set_video', { url: u });
+        let finalUrl = u;
+        if (useProxy) {
+            finalUrl = `${window.location.origin}/api/watch/proxy?url=${encodeURIComponent(u)}`;
+        }
+        setUrlInput(finalUrl);
+        socket.emit('wt:set_video', { url: finalUrl });
         setShowPicker(false);
     };
 
@@ -849,6 +857,19 @@ export default function WatchTogetherGame() {
                                         >
                                             ✓ Use this URL
                                         </button>
+
+                                        {/* Proxy Toggle */}
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, cursor: 'pointer', userSelect: 'none' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={useProxy}
+                                                onChange={e => setUseProxy(e.target.checked)}
+                                                style={{ width: 16, height: 16, cursor: 'pointer' }}
+                                            />
+                                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                                Use Proxy (fixes <strong>CORS</strong> / blocked errors)
+                                            </span>
+                                        </label>
                                     </div>
 
                                     {/* Divider */}
