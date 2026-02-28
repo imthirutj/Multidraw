@@ -105,6 +105,7 @@ export function useSocketEvents(): void {
                 currentWord: '',
                 tdChoice: null,
                 bsSpin: null,
+                bsAnswer: null,
             });
             store.setPlayers(
                 useGameStore.getState().players.map(p => ({ ...p, hasGuessedCorrectly: false }))
@@ -154,6 +155,10 @@ export function useSocketEvents(): void {
 
         socket.on('bs:spun', payload => {
             store.setBsSpin(payload);
+        });
+
+        socket.on('bs:answered', payload => {
+            store.setBsAnswer(payload);
         });
 
         socket.on('wt:state', payload => {

@@ -3,7 +3,7 @@ import { useGameStore } from '../../store/game.store';
 import socket from '../../config/socket';
 import { useVoiceChat } from '../../hooks/useVoiceChat';
 
-export default function Chat({ variant = 'default' }: { variant?: 'default' | 'overlay' }) {
+export default function Chat({ variant = 'default', className = '' }: { variant?: 'default' | 'overlay'; className?: string }) {
     const { chatMessages, isDrawer, roomCode } = useGameStore();
     const { isSpeaking, startSpeaking, stopSpeaking, error } = useVoiceChat(roomCode);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -14,10 +14,33 @@ export default function Chat({ variant = 'default' }: { variant?: 'default' | 'o
     const [gifs, setGifs] = useState<string[]>([]);
     const [isSearchingGifs, setIsSearchingGifs] = useState(false);
     const [isOpen, setIsOpen] = useState(variant !== 'overlay');
+    // Controls manual visibility and tracks unread count when hidden
+    const [isHistoryVisible, setIsHistoryVisible] = useState(true);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const prevMsgCountRef = useRef(chatMessages.length);
 
+    // Auto-scroll AND unread tracking logic
     useEffect(() => {
         if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-    }, [chatMessages]);
+
+        // Count new chat messages when hidden
+        if (!isHistoryVisible && chatMessages.length > prevMsgCountRef.current) {
+            const newMsgs = chatMessages.slice(prevMsgCountRef.current);
+            const userChats = newMsgs.filter(m => m.type === 'chat');
+            if (userChats.length > 0) {
+                setUnreadCount(prev => prev + userChats.length);
+            }
+        }
+        prevMsgCountRef.current = chatMessages.length;
+    }, [chatMessages, isHistoryVisible]);
+
+    const toggleHistory = () => {
+        const newValue = !isHistoryVisible;
+        setIsHistoryVisible(newValue);
+        if (newValue) {
+            setUnreadCount(0);
+        }
+    };
 
     const send = () => {
         const val = inputRef.current?.value.trim();
@@ -61,7 +84,7 @@ export default function Chat({ variant = 'default' }: { variant?: 'default' | 'o
     }, [showGifMenu, gifSearch]);
 
     return (
-        <div className={`chat-area ${variant === 'overlay' ? 'overlay-chat' : ''} ${!isOpen ? 'closed' : ''}`}>
+        <div className={`chat-area ${variant === 'overlay' ? 'overlay-chat' : ''} ${!isOpen ? 'closed' : ''} ${className}`}>
 
             {/* When closed: pill to open chat — positions via CSS (absolute on desktop, below-video on mobile) */}
             {variant === 'overlay' && !isOpen && (
@@ -73,7 +96,15 @@ export default function Chat({ variant = 'default' }: { variant?: 'default' | 'o
                 </button>
             )}
 
-            <div className="chat-messages" ref={listRef}>
+            <div
+                className="chat-messages"
+                ref={listRef}
+                style={{
+                    opacity: isHistoryVisible ? 1 : 0,
+                    transition: 'opacity 0.3s ease',
+                    pointerEvents: isHistoryVisible ? 'auto' : 'none'
+                }}
+            >
                 {chatMessages.map((msg, i) => {
                     const gifMatch = msg.text.match(/^(.*?):\s?GIF:\s?(http[^\s]+)$/);
                     if (gifMatch) {
@@ -131,6 +162,40 @@ export default function Chat({ variant = 'default' }: { variant?: 'default' | 'o
             {isOpen && (
                 <div className="chat-input-row" style={{ position: 'relative' }}>
                     {error && <div style={{ position: 'absolute', top: '-25px', color: 'red', fontSize: '10px' }}>{error}</div>}
+
+                    <button
+                        className="gif-toggle-btn"
+                        onClick={toggleHistory}
+                        title={isHistoryVisible ? "Hide Chat History" : "Show Chat History"}
+                        style={{
+                            position: 'relative',
+                            padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: isHistoryVisible ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.02)',
+                            color: isHistoryVisible ? '#fff' : '#888'
+                        }}
+                    >
+                        {!isHistoryVisible && unreadCount > 0 && (
+                            <div style={{
+                                position: 'absolute', top: '-6px', right: '-6px',
+                                background: '#ef4444', color: '#fff', fontSize: '10px', fontWeight: 800,
+                                padding: '3px 5px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.5)',
+                                pointerEvents: 'none', lineHeight: 1
+                            }}>
+                                {unreadCount > 99 ? '99+' : unreadCount}
+                            </div>
+                        )}
+                        {isHistoryVisible ? (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                        ) : (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                <line x1="3" y1="3" x2="21" y2="21"></line>
+                            </svg>
+                        )}
+                    </button>
+
                     <button
                         className="gif-toggle-btn"
                         onMouseDown={startSpeaking}

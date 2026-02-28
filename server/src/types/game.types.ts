@@ -117,6 +117,7 @@ export interface ServerToClientEvents {
 
     // Bottle Spin
     'bs:spun': (payload: { rotationOffset: number; targetIndex: number; targetSocketId: string; promptType: 'truth' | 'dare'; promptText: string }) => void;
+    'bs:answered': (payload: { action: 'complete' | 'skip' | 'refuse'; answer: string; targetName: string; pointDelta: number }) => void;
 
     'webrtc:user_joined': (payload: { socketId: string }) => void;
     'webrtc:signal': (payload: { from: string; type: string; data: any }) => void;

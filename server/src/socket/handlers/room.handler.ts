@@ -330,6 +330,14 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         const player = room.players.find(p => p.socketId === socket.id);
         const name = player?.username || 'Someone';
 
+        // Broadcast answer reveal to all players for prominent display
+        io.to(roomCode).emit('bs:answered', {
+            action,
+            answer: answer || '',
+            targetName: name,
+            pointDelta,
+        });
+
         if (action === 'complete') {
             const answerText = answer ? ` Answer: "**${answer}**"` : '';
             io.to(roomCode).emit('chat:message', { type: 'system', text: `${name} completed the task!${answerText} (${pointDelta > 0 ? '+' : ''}${pointDelta} pts)` });

@@ -30,6 +30,7 @@ interface GameState {
     timeLeft: number;
     tdChoice: { choice: 'truth' | 'dare'; prompt?: string } | null;
     bsSpin: { rotationOffset: number; targetIndex: number; targetSocketId: string; promptType: 'truth' | 'dare'; promptText: string } | null;
+    bsAnswer: { action: 'complete' | 'skip' | 'refuse'; answer: string; targetName: string; pointDelta: number } | null;
 
     // Watch Together
     watch: WatchTogetherStatePayload;
@@ -54,6 +55,7 @@ interface GameState {
     setCurrentWord: (w: string) => void;
     setTdChoice: (val: GameState['tdChoice']) => void;
     setBsSpin: (val: GameState['bsSpin']) => void;
+    setBsAnswer: (val: GameState['bsAnswer']) => void;
     setWatchState: (val: WatchTogetherStatePayload) => void;
     setWatchBookmarks: (bookmarks: PublicBookmark[]) => void;
     addChat: (msg: ChatMessage) => void;
@@ -86,6 +88,7 @@ const initialState = {
     timeLeft: 80,
     tdChoice: null as GameState['tdChoice'],
     bsSpin: null as GameState['bsSpin'],
+    bsAnswer: null as GameState['bsAnswer'],
     watch: { url: null, isPlaying: false, currentTime: 0, updatedAtMs: 0 } as WatchTogetherStatePayload,
     watchNonce: 0,
     watchBookmarks: [] as PublicBookmark[],
@@ -109,6 +112,7 @@ export const useGameStore = create<GameState>(set => ({
     setCurrentWord: currentWord => set({ currentWord }),
     setTdChoice: tdChoice => set({ tdChoice }),
     setBsSpin: bsSpin => set({ bsSpin }),
+    setBsAnswer: bsAnswer => set({ bsAnswer }),
     setWatchState: watch => set(s => ({ watch, watchNonce: s.watchNonce + 1 })),
     setWatchBookmarks: watchBookmarks => set({ watchBookmarks }),
     addChat: msg =>
