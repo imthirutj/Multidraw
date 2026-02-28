@@ -339,7 +339,7 @@ export default function BottleSpinGame() {
                         background: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.3)',
                         borderRadius: 16, animation: 'bsPulse 1.2s ease-in-out infinite',
                     }}>
-                        <span style={{ fontWeight: 700, color: '#14b8a6', fontSize: '1rem' }}>🍾 Spinning…</span>
+                        <span style={{ fontWeight: 700, color: '#14b8a6', fontSize: '1rem' }}>🍾 {spinnerName} is spinning…</span>
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginLeft: 8 }}>Who will it land on?</span>
                     </div>
                 )}
