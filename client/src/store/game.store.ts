@@ -27,7 +27,7 @@ interface GameState {
     hint: string;
     timeLeft: number;
 
-    bsSpin: { rotationOffset: number; targetIndex: number; targetSocketId: string; promptType: 'truth' | 'dare'; promptText: string } | null;
+    bsSpin: { rotationOffset: number; targetIndex: number; targetSocketId: string; promptType?: 'truth' | 'dare'; promptText?: string } | null;
     bsAnswer: { action: 'complete' | 'skip' | 'refuse'; answer: string; targetName: string; pointDelta: number; spinnerName?: string; question?: string; } | null;
 
     // Watch Together

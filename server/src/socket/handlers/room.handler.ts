@@ -258,21 +258,31 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
 
 
     // Bottle Spin
-    socket.on('bs:spin', async ({ rotationOffset, targetIndex, promptType, promptText }) => {
+    socket.on('bs:spin', async ({ rotationOffset, targetIndex }) => {
         const { roomCode } = socket.data;
         if (!roomCode) return;
         const room = await RoomRepository.findByCode(roomCode);
         if (!room || room.status !== 'playing') return;
 
-        if (room.currentDrawer !== socket.id && room.hostSocketId !== socket.id) return; // Note: For flawless testing host can trigger fallback
+        if (room.currentDrawer !== socket.id && room.hostSocketId !== socket.id) return;
 
         const targetSocketId = room.players[targetIndex]?.socketId;
         if (!targetSocketId) return;
 
-        await RoomRepository.save(roomCode, { currentWord: promptText });
-
-        io.to(roomCode).emit('bs:spun', { rotationOffset, targetIndex, targetSocketId, promptType, promptText });
+        io.to(roomCode).emit('bs:spun', { rotationOffset, targetIndex, targetSocketId });
         io.to(roomCode).emit('chat:message', { type: 'system', text: `🍾 The bottle is spinning...` });
+    });
+
+    socket.on('bs:set_prompt', async ({ promptType, promptText }) => {
+        const { roomCode } = socket.data;
+        if (!roomCode) return;
+        const room = await RoomRepository.findByCode(roomCode);
+        if (!room || room.status !== 'playing') return;
+
+        if (room.currentDrawer !== socket.id && room.hostSocketId !== socket.id) return;
+
+        await RoomRepository.save(roomCode, { currentWord: promptText });
+        io.to(roomCode).emit('bs:prompt_set', { promptType, promptText });
     });
 
     socket.on('bs:resolve', async ({ action, pointDelta, answer }) => {

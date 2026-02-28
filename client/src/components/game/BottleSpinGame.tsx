@@ -40,12 +40,20 @@ export default function BottleSpinGame() {
     const isSpinner = isDrawer;
     const spinnerName = players.find(p => p.socketId === drawerSocketId)?.username ?? 'Someone';
 
+    const lastSpinId = useRef<string>('');
+
     const [isSpinning, setIsSpinning] = useState(false);
     const [isFetching, setIsFetching] = useState(false);
     const [showTask, setShowTask] = useState(false);
     const [localRotation, setLocalRotation] = useState(0);
     const [answerInput, setAnswerInput] = useState('');
     const [rating, setRating] = useState('pg13');
+
+    // Selection phase
+    const [showPromptMode, setShowPromptMode] = useState(false);
+    const [customPromptText, setCustomPromptText] = useState('');
+    const [isChoosingCustom, setIsChoosingCustom] = useState(false);
+    const [selectedType, setSelectedType] = useState<'truth' | 'dare'>('truth');
 
     const circleRef = useRef<HTMLDivElement>(null);
     const [circleRadius, setCircleRadius] = useState(100);
@@ -67,6 +75,10 @@ export default function BottleSpinGame() {
     // Spin animation
     useEffect(() => {
         if (bsSpin) {
+            const spinId = `${bsSpin.targetIndex}-${bsSpin.rotationOffset}`;
+            if (spinId === lastSpinId.current) return;
+            lastSpinId.current = spinId;
+
             const n = players.length || 1;
             const segmentAngle = 360 / n;
             const targetAngle = bsSpin.targetIndex * segmentAngle;
@@ -78,33 +90,75 @@ export default function BottleSpinGame() {
             });
             setIsSpinning(true);
             setShowTask(false);
-            const t = setTimeout(() => { setIsSpinning(false); setShowTask(true); }, SPIN_DURATION);
+            setShowPromptMode(false);
+
+            const t = setTimeout(() => {
+                setIsSpinning(false);
+                if (!bsSpin.promptText) {
+                    setShowPromptMode(true);
+                } else {
+                    setShowTask(true);
+                }
+            }, SPIN_DURATION);
             return () => clearTimeout(t);
         } else {
+            lastSpinId.current = '';
             setIsSpinning(false);
             setShowTask(false);
+            setShowPromptMode(false);
             setAnswerInput('');
+            setIsChoosingCustom(false);
+            setCustomPromptText('');
         }
     }, [bsSpin, players.length]);
 
-    const handleSpin = async () => {
-        if (!isSpinner || isSpinning || bsSpin || isFetching) return;
-        setIsFetching(true);
-        try {
-            let targetIndex = Math.floor(Math.random() * players.length);
-            if (players.length > 1 && players[targetIndex].socketId === mySocketId)
-                targetIndex = (targetIndex + 1) % players.length;
+    // When prompt is finally set
+    useEffect(() => {
+        if (bsSpin?.promptText && !isSpinning) {
+            setShowPromptMode(false);
+            setShowTask(true);
+        }
+    }, [bsSpin?.promptText, isSpinning]);
 
-            const rotationOffset = 360 * (Math.floor(Math.random() * 3) + 4);
-            const type: 'truth' | 'dare' = Math.random() > 0.5 ? 'truth' : 'dare';
-            let promptText = 'Share something interesting about yourself!';
+    const handleSpin = () => {
+        if (!isSpinner || isSpinning || bsSpin || isFetching) return;
+
+        // Pick target
+        let targetIndex = Math.floor(Math.random() * players.length);
+        if (players.length > 1 && players[targetIndex].socketId === mySocketId)
+            targetIndex = (targetIndex + 1) % players.length;
+
+        const rotationOffset = 360 * (Math.floor(Math.random() * 3) + 4);
+        socket.emit('bs:spin', { rotationOffset, targetIndex });
+    };
+
+    const handlePromptChoice = async (mode: 'random' | 'custom') => {
+        if (!isSpinner || isFetching) return;
+
+        let type = selectedType;
+        let text = customPromptText.trim();
+
+        if (mode === 'random') {
+            setIsFetching(true);
             try {
                 const res = await fetch(`https://api.truthordarebot.xyz/v1/${type}?rating=${rating}`);
-                if (res.ok) { const d = await res.json(); if (d?.question) promptText = d.question; }
-            } catch { /* fallback */ }
+                if (res.ok) {
+                    const d = await res.json();
+                    if (d?.question) text = d.question;
+                } else {
+                    text = type === 'truth' ? "What's your biggest secret?" : "I dare you to do 10 pushups!";
+                }
+            } catch {
+                text = "Tell us a funny story!";
+            } finally {
+                setIsFetching(false);
+            }
+        }
 
-            socket.emit('bs:spin', { rotationOffset, targetIndex, promptType: type, promptText });
-        } finally { setIsFetching(false); }
+        if (!text) return;
+
+        socket.emit('bs:set_prompt', { promptType: type, promptText: text });
+        setShowPromptMode(false);
     };
 
     const handleResolve = (action: 'complete' | 'skip' | 'refuse') => {
@@ -341,6 +395,82 @@ export default function BottleSpinGame() {
                     }}>
                         <span style={{ fontWeight: 700, color: '#14b8a6', fontSize: '1rem' }}>🍾 {spinnerName} is spinning…</span>
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginLeft: 8 }}>Who will it land on?</span>
+                    </div>
+                )}
+
+                {/* Selecting Prompt state (After spin, before prompt is set) */}
+                {showPromptMode && bsSpin && !bsSpin.promptText && (
+                    <div style={{
+                        background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)',
+                        borderRadius: 16, padding: '16px', animation: 'bsSlideUp 0.4s ease',
+                    }}>
+                        {isSpinner ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '0.8rem', color: '#14b8a6', fontWeight: 800, marginBottom: 4 }}>LANDED ON {targetName.toUpperCase()}!</div>
+                                    <div style={{ fontSize: '1rem', fontWeight: 700 }}>Choose a challenge mode:</div>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <button
+                                        onClick={() => setSelectedType('truth')}
+                                        style={{ flex: 1, padding: '8px', borderRadius: 8, border: '1px solid var(--border)', background: selectedType === 'truth' ? 'rgba(124, 92, 252, 0.2)' : 'transparent', color: selectedType === 'truth' ? 'var(--primary-light)' : '#aaa', cursor: 'pointer', fontWeight: 700 }}
+                                    >😇 Truth</button>
+                                    <button
+                                        onClick={() => setSelectedType('dare')}
+                                        style={{ flex: 1, padding: '8px', borderRadius: 8, border: '1px solid var(--border)', background: selectedType === 'dare' ? 'rgba(244, 63, 94, 0.2)' : 'transparent', color: selectedType === 'dare' ? '#f43f5e' : '#aaa', cursor: 'pointer', fontWeight: 700 }}
+                                    >😈 Dare</button>
+                                </div>
+
+                                {!isChoosingCustom ? (
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <button
+                                            onClick={() => handlePromptChoice('random')}
+                                            disabled={isFetching}
+                                            style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem' }}
+                                        >
+                                            {isFetching ? '⌛ Fetching...' : '🎲 Random Question'}
+                                        </button>
+                                        <button
+                                            onClick={() => setIsChoosingCustom(true)}
+                                            style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem' }}
+                                        >
+                                            ✍️ Custom Question
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        <input
+                                            type="text"
+                                            placeholder="Type your custom question/dare..."
+                                            value={customPromptText}
+                                            onChange={e => setCustomPromptText(e.target.value)}
+                                            autoFocus
+                                            onKeyDown={e => { if (e.key === 'Enter' && customPromptText.trim()) handlePromptChoice('custom'); }}
+                                            style={{ width: '100%', padding: '12px', borderRadius: 12, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', color: '#fff', outline: 'none' }}
+                                        />
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            <button
+                                                onClick={() => handlePromptChoice('custom')}
+                                                disabled={!customPromptText.trim()}
+                                                style={{ flex: 2, padding: '10px', borderRadius: 10, background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+                                            >Send Challenge</button>
+                                            <button
+                                                onClick={() => { setIsChoosingCustom(false); setCustomPromptText(''); }}
+                                                style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'transparent', border: '1px solid var(--border)', color: '#aaa', cursor: 'pointer' }}
+                                            >Cancel</button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div style={{ textAlign: 'center', padding: '10px' }}>
+                                <div style={{ fontSize: '1.2rem', marginBottom: 8 }}>🎯 Landed on <strong>{targetName}</strong>!</div>
+                                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', animation: 'bsPulse 1.5s infinite' }}>
+                                    Waiting for <strong>{spinnerName}</strong> to choose a challenge...
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

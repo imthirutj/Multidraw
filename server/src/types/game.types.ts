@@ -60,7 +60,8 @@ export interface ClientToServerEvents {
 
 
     // Bottle Spin
-    'bs:spin': (payload: { rotationOffset: number; targetIndex: number; promptType: 'truth' | 'dare'; promptText: string }) => void;
+    'bs:spin': (payload: { rotationOffset: number; targetIndex: number }) => void;
+    'bs:set_prompt': (payload: { promptType: 'truth' | 'dare'; promptText: string }) => void;
     'bs:resolve': (payload: { action: 'complete' | 'skip' | 'refuse'; pointDelta: number; answer?: string }) => void;
 
     'webrtc:join': () => void;
@@ -113,7 +114,8 @@ export interface ServerToClientEvents {
 
 
     // Bottle Spin
-    'bs:spun': (payload: { rotationOffset: number; targetIndex: number; targetSocketId: string; promptType: 'truth' | 'dare'; promptText: string }) => void;
+    'bs:spun': (payload: { rotationOffset: number; targetIndex: number; targetSocketId: string }) => void;
+    'bs:prompt_set': (payload: { promptType: 'truth' | 'dare'; promptText: string }) => void;
     'bs:answered': (payload: { action: 'complete' | 'skip' | 'refuse'; answer: string; targetName: string; pointDelta: number; spinnerName?: string; question?: string; }) => void;
 
     'webrtc:user_joined': (payload: { socketId: string }) => void;

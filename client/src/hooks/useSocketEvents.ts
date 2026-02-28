@@ -145,6 +145,13 @@ export function useSocketEvents(): void {
             store.setBsSpin(payload);
         });
 
+        socket.on('bs:prompt_set', payload => {
+            const current = useGameStore.getState().bsSpin;
+            if (current) {
+                store.setBsSpin({ ...current, ...payload });
+            }
+        });
+
         socket.on('bs:answered', payload => {
             store.setBsAnswer(payload);
         });
