@@ -63,27 +63,13 @@ export default function Chat({ variant = 'default' }: { variant?: 'default' | 'o
     return (
         <div className={`chat-area ${variant === 'overlay' ? 'overlay-chat' : ''} ${!isOpen ? 'closed' : ''}`}>
 
-            {variant === 'overlay' && (
+            {/* When closed: pill to open chat — positions via CSS (absolute on desktop, below-video on mobile) */}
+            {variant === 'overlay' && !isOpen && (
                 <button
-                    className="btn btn-ghost-sm"
-                    style={{
-                        position: 'absolute',
-                        bottom: isOpen ? 'auto' : 10,
-                        top: isOpen ? 5 : 'auto',
-                        left: isOpen ? 'auto' : 10,
-                        right: isOpen ? 5 : 'auto',
-                        zIndex: 60,
-                        padding: isOpen ? '4px 8px' : '8px 12px',
-                        background: isOpen ? 'rgba(255,100,100,0.2)' : 'var(--surface-light)',
-                        color: isOpen ? '#ff8888' : 'inherit',
-                        borderRadius: '20px',
-                        boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
-                        pointerEvents: 'auto',
-                        fontSize: isOpen ? '0.8rem' : '1rem'
-                    }}
-                    onClick={() => setIsOpen(!isOpen)}
+                    className="overlay-toggle-btn"
+                    onClick={() => setIsOpen(true)}
                 >
-                    {isOpen ? '✖ Close' : '💬 Chat'}
+                    💬 Chat
                 </button>
             )}
 
@@ -172,6 +158,27 @@ export default function Chat({ variant = 'default' }: { variant?: 'default' | 'o
                         autoComplete="off"
                     />
                     <button onClick={send}>➤</button>
+                    {/* Close button lives right here in the input row — only for overlay mode */}
+                    {variant === 'overlay' && (
+                        <button
+                            onClick={() => setIsOpen(false)}
+                            title="Close chat"
+                            style={{
+                                background: 'rgba(220,60,60,0.35)',
+                                border: 'none',
+                                color: '#ffaaaa',
+                                padding: '0 12px',
+                                fontSize: '14px',
+                                cursor: 'pointer',
+                                flexShrink: 0,
+                                transition: 'background 0.2s',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(220,60,60,0.6)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(220,60,60,0.35)')}
+                        >
+                            ✕
+                        </button>
+                    )}
                 </div>
             )}
         </div>

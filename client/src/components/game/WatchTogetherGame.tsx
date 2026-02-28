@@ -97,6 +97,10 @@ export default function WatchTogetherGame() {
     }, [watch.url]);
 
     React.useEffect(() => {
+        // Host drives the video directly via native controls.
+        // Applying remote state on the host creates a feedback loop (play→echo→pause→echo…).
+        if (isHost) return;
+
         const v = videoRef.current;
         if (!v) return;
 
@@ -120,13 +124,13 @@ export default function WatchTogetherGame() {
             } catch {
                 if (watch.isPlaying) setPlayBlocked(true);
             } finally {
-                // Small delay so immediate media events don't echo back.
-                setTimeout(() => { applyingRemote.current = false; }, 120);
+                // Longer delay so immediate media events don't echo back.
+                setTimeout(() => { applyingRemote.current = false; }, 400);
             }
         };
 
         void run();
-    }, [watchNonce, watch.currentTime, watch.isPlaying]);
+    }, [isHost, watchNonce, watch.currentTime, watch.isPlaying]);
 
     React.useEffect(() => {
         const v = videoRef.current;
@@ -279,6 +283,7 @@ export default function WatchTogetherGame() {
                     minHeight: 0,
                 }}
             >
+                {/* URL input controls */}
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
                     {isHost ? (
                         <>
@@ -369,7 +374,8 @@ export default function WatchTogetherGame() {
                     </div>
                 )}
 
-                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, gap: 8 }}>
+                {/* Video + transparent overlay chat wrapper */}
+                <div className="wt-video-wrapper" style={{ flex: 1, position: 'relative', minHeight: 0 }}>
                     {/* Video / placeholder area */}
                     <div
                         style={{
@@ -385,7 +391,7 @@ export default function WatchTogetherGame() {
                                     <h2 style={{ marginBottom: 8 }}>Watch Together</h2>
                                     <p style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
                                         {isHost
-                                            ? 'Paste a direct video URL above and click “Set Video”. Then press Play to start for everyone.'
+                                            ? 'Paste a direct video URL above and click "Set Video". Then press Play to start for everyone.'
                                             : 'Waiting for the host to set a video URL…'}
                                     </p>
                                 </div>
@@ -501,7 +507,7 @@ export default function WatchTogetherGame() {
                                         <div style={{ background: 'rgba(15, 15, 26, 0.95)', border: '1px solid var(--border)', borderRadius: 16, padding: 18, width: 'min(520px, 92%)', textAlign: 'center' }}>
                                             <div style={{ fontWeight: 800, marginBottom: 6 }}>Click to start playback</div>
                                             <div style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12 }}>
-                                                Your browser blocked autoplay. Click below once and you’ll stay synced.
+                                                Your browser blocked autoplay. Click below once and you'll stay synced.
                                             </div>
                                             <button
                                                 className="btn btn-primary"
@@ -525,7 +531,10 @@ export default function WatchTogetherGame() {
                         )}
                     </div>
 
+                    {/* Transparent overlay chat — floats on top of the video */}
+                    <Chat variant="overlay" />
                 </div>
+
             </div>
 
             {/* Generic video picker modal (all screen sizes, host only) */}
@@ -697,8 +706,6 @@ export default function WatchTogetherGame() {
                 </div>
             )}
 
-            <Chat />
         </div>
     );
 }
-
