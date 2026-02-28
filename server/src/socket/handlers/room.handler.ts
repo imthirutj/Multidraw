@@ -3,6 +3,7 @@ import type { ClientToServerEvents, ServerToClientEvents } from '../../types/gam
 import { RoomRepository } from '../../repositories/room.repository';
 import { GameService } from '../../services/game.service';
 import { WatchTogetherService } from '../../services/watch.service';
+import { VisitCityService } from '../../services/city.service';
 import { BookmarkRepository } from '../../repositories/bookmark.repository';
 
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -10,7 +11,7 @@ type IoServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
 const hostTransferTimeouts = new Map<string, NodeJS.Timeout>();
 
-export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameService: GameService, watchService: WatchTogetherService): void {
+export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameService: GameService, watchService: WatchTogetherService, cityService: VisitCityService): void {
 
     socket.on('room:join', async ({ roomCode, username, avatar }) => {
         const room = await RoomRepository.findByCode(roomCode);
@@ -108,6 +109,24 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
             socket.emit('wt:bookmarks', { bookmarks: bms });
         }
 
+        if (room.gameType === 'visit_city') {
+            const vcPlayers = cityService.getPlayers(roomCode);
+            socket.emit('vc:state', { players: vcPlayers });
+            // If they are not in city yet, add them with random position
+            if (!vcPlayers.some(p => p.socketId === socket.id)) {
+                const newP = {
+                    ...orderedPlayers.find(p => p.socketId === socket.id)!,
+                    x: Math.random() * 800 + 100,
+                    y: Math.random() * 140 + 620,
+                    facing: 'right' as const,
+                    isMoving: false,
+                    lastSeen: Date.now()
+                };
+                cityService.updatePlayer(roomCode, newP);
+                io.to(roomCode).emit('vc:moved', newP);
+            }
+        }
+
         // If joining mid-game, explicitly sync them into the current round instantly
         if (room.status === 'playing') {
             socket.emit('game:starting');
@@ -156,7 +175,7 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         const room = await RoomRepository.findByCode(roomCode);
         if (!room) return;
         if (room.hostSocketId !== socket.id) return socket.emit('error', { message: 'Only the host can start' });
-        if (room.gameType !== 'watch_together' && room.players.length < 2) {
+        if (room.gameType !== 'watch_together' && room.gameType !== 'visit_city' && room.players.length < 2) {
             return socket.emit('error', { message: 'Need at least 2 players' });
         }
 
@@ -168,6 +187,11 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
             const bms = await BookmarkRepository.getAll();
             io.to(roomCode).emit('wt:bookmarks', { bookmarks: bms });
             io.to(roomCode).emit('chat:message', { type: 'system', text: '🎬 Watch Together session started.' });
+            return;
+        }
+
+        if (room.gameType === 'visit_city') {
+            io.to(roomCode).emit('chat:message', { type: 'system', text: '🏙️ Welcome to the City! You can now roam and chat.' });
             return;
         }
 
@@ -329,6 +353,28 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         gameService.endRound(roomCode);
     });
 
+    // Visit City
+    socket.on('vc:move', (payload) => {
+        const { roomCode } = socket.data;
+        if (!roomCode) return;
+
+        const username = socket.data.username || 'Someone';
+        const avatar = ''; // We'll need to fetch full player data if we want to be safe, but can also assume client has it
+
+        const vcPlayer = {
+            socketId: socket.id,
+            username,
+            avatar,
+            score: 0,
+            hasGuessedCorrectly: false,
+            ...payload,
+            lastSeen: Date.now()
+        };
+
+        cityService.updatePlayer(roomCode, vcPlayer);
+        socket.to(roomCode).emit('vc:moved', vcPlayer);
+    });
+
 
     socket.on('webrtc:join', () => {
         const { roomCode } = socket.data;
@@ -362,6 +408,7 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
 
         // We can just wipe its data from the repository
         await RoomRepository.delete(roomCode);
+        cityService.clearRoom(roomCode);
     });
 
     socket.on('disconnect', async () => {
@@ -407,6 +454,9 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         if (players.length === 0) {
             gameService.clearTimer(roomCode);
             watchService.clearRoom(roomCode);
+            cityService.clearRoom(roomCode);
+        } else {
+            cityService.removePlayer(roomCode, socket.id);
         }
     });
 }

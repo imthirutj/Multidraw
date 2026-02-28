@@ -9,7 +9,8 @@ const randomAvatar = () => AVATARS[Math.floor(Math.random() * AVATARS.length)];
 const GAME_MODES = [
     { id: 'drawing', name: 'Draw & Guess', icon: '🎨', desc: 'Draw pictures and let others guess the word!' },
     { id: 'bottle_spin', name: 'Bottle Spin', icon: '🍾', desc: 'Spin the bottle, complete tasks and earn points.' },
-    { id: 'watch_together', name: 'Watch Together', icon: '🎬', desc: 'Watch videos synced with friends.' }
+    { id: 'watch_together', name: 'Watch Together', icon: '🎬', desc: 'Watch videos synced with friends.' },
+    { id: 'visit_city', name: 'Visit City', icon: '🏙️', desc: 'Explore a 2D city and chat with friends!' }
 ];
 
 export default function LobbyScreen() {
@@ -100,9 +101,11 @@ export default function LobbyScreen() {
             const fallbackRoomName =
                 chosenGameType === 'watch_together'
                     ? 'Watch Room'
-                    : chosenGameType === 'truth_or_dare'
-                        ? 'Truth or Dare Room'
-                        : 'Drawing Room';
+                    : chosenGameType === 'visit_city'
+                        ? 'City Roam'
+                        : chosenGameType === 'truth_or_dare'
+                            ? 'Truth or Dare Room'
+                            : 'Drawing Room';
 
             const res = await fetch('/api/rooms', {
                 method: 'POST',
@@ -114,13 +117,13 @@ export default function LobbyScreen() {
                     totalRounds:
                         chosenGameType === 'truth_or_dare'
                             ? 20
-                            : chosenGameType === 'watch_together'
+                            : (chosenGameType === 'watch_together' || chosenGameType === 'visit_city')
                                 ? 1
                                 : (Number(totalRounds) || 3),
                     roundDuration:
                         chosenGameType === 'truth_or_dare'
                             ? 300
-                            : chosenGameType === 'watch_together'
+                            : (chosenGameType === 'watch_together' || chosenGameType === 'visit_city')
                                 ? 3600
                                 : Math.round((Number(roundDuration) || 1.5) * 60)
                 }),
@@ -179,8 +182,8 @@ export default function LobbyScreen() {
                         {rooms.length === 0 ? (
                             <p className="no-rooms">No open rooms found</p>
                         ) : rooms.map(r => {
-                            const modeIcon = r.gameType === 'watch_together' ? '🎬' : r.gameType === 'bottle_spin' ? '🍾' : '🎨';
-                            const modeLabel = r.gameType === 'watch_together' ? 'Watch Together' : r.gameType === 'bottle_spin' ? 'Bottle Spin' : 'Draw & Guess';
+                            const modeIcon = r.gameType === 'watch_together' ? '🎬' : r.gameType === 'visit_city' ? '🏙️' : r.gameType === 'bottle_spin' ? '🍾' : '🎨';
+                            const modeLabel = r.gameType === 'watch_together' ? 'Watch Together' : r.gameType === 'visit_city' ? 'Visit City' : r.gameType === 'bottle_spin' ? 'Bottle Spin' : 'Draw & Guess';
                             return (
                                 <div key={r.roomCode} className="room-item">
                                     <div>
@@ -196,7 +199,7 @@ export default function LobbyScreen() {
                                         <div className="room-item-meta">
                                             {modeLabel} &nbsp;|&nbsp;
                                             👥 {r.players.length}/{r.maxPlayers}
-                                            {r.gameType !== 'watch_together' && (
+                                            {r.gameType !== 'watch_together' && r.gameType !== 'visit_city' && (
                                                 <>
                                                     &nbsp;|&nbsp; 🔄 {r.totalRounds} rounds
                                                 </>
@@ -274,7 +277,7 @@ export default function LobbyScreen() {
                                                     <button type="button" className={`btn ${!isPublic ? 'btn-primary' : 'btn-ghost'}`} style={{ width: 'auto', padding: '10px 14px' }} onClick={() => setIsPublic(false)}>🔒 Private</button>
                                                 </div>
                                             </div>
-                                            {mode.id !== 'watch_together' && (
+                                            {mode.id !== 'watch_together' && mode.id !== 'visit_city' && (
                                                 <div className="form-row">
                                                     <div className="form-group">
                                                         <label>Rounds</label>
@@ -304,7 +307,7 @@ export default function LobbyScreen() {
                                                             </div>
                                                             <div className="room-item-meta">
                                                                 👥 {r.players.length}/{r.maxPlayers}
-                                                                {r.gameType !== 'watch_together' && <>&nbsp;|&nbsp; 🔄 {r.totalRounds} rounds</>}
+                                                                {r.gameType !== 'watch_together' && r.gameType !== 'visit_city' && <>&nbsp;|&nbsp; 🔄 {r.totalRounds} rounds</>}
                                                             </div>
                                                         </div>
                                                         <button className="room-item-btn" onClick={() => { setJoinCode(r.roomCode); handleJoin(r.roomCode); }}>Join</button>

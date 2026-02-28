@@ -7,6 +7,7 @@ import Chat from '../game/Chat';
 
 import WatchTogetherGame from '../game/WatchTogetherGame';
 import BottleSpinGame from '../game/BottleSpinGame';
+import VisitCityGame from '../game/VisitCityGame';
 import UserProfile from './UserProfile';
 import type { DrawTool } from '../../types/game.types';
 import socket from '../../config/socket';
@@ -18,6 +19,7 @@ export default function GameScreen() {
     const isWatchTogether = gameType === 'watch_together';
 
     const isBottleSpin = gameType === 'bottle_spin';
+    const isVisitCity = gameType === 'visit_city';
 
     const me = players.find(p => p.socketId === mySocketId);
     const hasGuessed = me?.hasGuessedCorrectly;
@@ -50,6 +52,8 @@ export default function GameScreen() {
 
     // Show overlay at round start
     useEffect(() => {
+        if (isVisitCity || isWatchTogether) return;
+
         const drawerName = players.find(p => p.socketId === drawerSocketId)?.username ?? 'Someone';
         const icon = isDrawer ? '✏️' : '🎯';
         const title = isDrawer ? 'Your turn to draw!' : `${drawerName} is drawing!`;
@@ -80,6 +84,8 @@ export default function GameScreen() {
 
                         ) : isBottleSpin ? (
                             <div className="round-badge mobile-hide">🍾 Bottle Spin</div>
+                        ) : isVisitCity ? (
+                            <div className="round-badge mobile-hide">🏙️ Visit City</div>
                         ) : (
                             <div className="round-badge">Round <strong>{round}</strong> / {totalRounds}</div>
                         )}
@@ -91,6 +97,8 @@ export default function GameScreen() {
 
                         ) : isBottleSpin ? (
                             <div className="word-display">🍾 Bottle Spin</div>
+                        ) : isVisitCity ? (
+                            <div className="word-display">🏙️ Visit City</div>
                         ) : isDrawer || hasGuessed ? (
                             <div className={`word-display ${hasGuessed ? 'correct-word' : ''}`}>
                                 {isDrawer && currentWord ? currentWord.split('').join(' ') : (hint || '_ _ _ _ _')}
@@ -125,7 +133,7 @@ export default function GameScreen() {
                                 />
                             </label>
                         )}
-                        {!isWatchTogether && isDrawer && (isBottleSpin ? <div className="drawing-tag">✅ It's your turn!</div> : <div className="drawing-tag">✏️ You are drawing!</div>)}
+                        {!isWatchTogether && (isDrawer || isVisitCity) && (isBottleSpin ? <div className="drawing-tag">✅ It's your turn!</div> : isVisitCity ? <div className="drawing-tag">🚶 Active Roaming</div> : <div className="drawing-tag">✏️ You are drawing!</div>)}
                     </div>
 
                     <div className="topbar-right">
@@ -223,6 +231,8 @@ export default function GameScreen() {
                 <WatchTogetherGame />
             ) : isBottleSpin ? (
                 <BottleSpinGame />
+            ) : isVisitCity ? (
+                <VisitCityGame />
             ) : (
                 <div className="game-body">
                     <PlayerSidebar />

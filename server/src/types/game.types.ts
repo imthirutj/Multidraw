@@ -75,6 +75,9 @@ export interface ClientToServerEvents {
     'wt:sync_request': () => void;
     'wt:bookmark:add': (payload: { url: string; title?: string; thumbnailUrl?: string }) => void;
     'wt:bookmark:remove': (payload: { url: string }) => void;
+
+    // Visit City
+    'vc:move': (payload: VisitCityMovePayload) => void;
 }
 
 // ─── Socket Events: Server → Client ──────────────────────────────────────────
@@ -125,6 +128,10 @@ export interface ServerToClientEvents {
     'wt:state': (payload: WatchTogetherStatePayload) => void;
     'wt:bookmarks': (payload: { bookmarks: PublicBookmark[] }) => void;
 
+    // Visit City
+    'vc:state': (payload: { players: VisitCityPlayer[] }) => void;
+    'vc:moved': (payload: VisitCityPlayer) => void;
+
     error: (payload: { message: string }) => void;
 }
 
@@ -138,6 +145,22 @@ export interface RoomJoinedPayload {
     status: GameStatus;
     totalRounds: number;
     roundDuration: number;
+}
+
+// ─── Visit City ───────────────────────────────────────────────────────────────
+export interface VisitCityPlayer extends Player {
+    x: number;
+    y: number;
+    facing: 'left' | 'right';
+    isMoving: boolean;
+    lastSeen: number;
+}
+
+export interface VisitCityMovePayload {
+    x: number;
+    y: number;
+    facing: 'left' | 'right';
+    isMoving: boolean;
 }
 
 export interface RoundStartPayload {

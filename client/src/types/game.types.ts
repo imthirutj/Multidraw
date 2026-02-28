@@ -72,6 +72,21 @@ export interface RoomListItem {
     status: GameStatus;
 }
 
+export interface VisitCityPlayer extends Player {
+    x: number;
+    y: number;
+    facing: 'left' | 'right';
+    isMoving: boolean;
+    lastSeen: number;
+}
+
+export interface VisitCityMovePayload {
+    x: number;
+    y: number;
+    facing: 'left' | 'right';
+    isMoving: boolean;
+}
+
 
 export interface ClientToServerEvents {
     'bs:spin': (payload: { rotationOffset: number; targetIndex: number; promptType: 'truth' | 'dare'; promptText: string }) => void;
@@ -83,6 +98,7 @@ export interface ClientToServerEvents {
     'wt:bookmark:remove': (payload: { url: string }) => void;
     'room:kick': (payload: { targetSocketId: string }) => void;
     'room:delete': () => void;
+    'vc:move': (payload: VisitCityMovePayload) => void;
 }
 
 export interface ServerToClientEvents {
@@ -90,4 +106,6 @@ export interface ServerToClientEvents {
     'bs:answered': (payload: { action: 'complete' | 'skip' | 'refuse'; answer: string; targetName: string; pointDelta: number; spinnerName?: string; question?: string; }) => void;
     'room:kicked': () => void;
     'wt:bookmarks': (payload: { bookmarks: PublicBookmark[] }) => void;
+    'vc:state': (payload: { players: VisitCityPlayer[] }) => void;
+    'vc:moved': (payload: VisitCityPlayer) => void;
 }

@@ -164,6 +164,14 @@ export function useSocketEvents(): void {
             useGameStore.getState().setWatchBookmarks(payload.bookmarks);
         });
 
+        socket.on('vc:state', payload => {
+            store.setVcPlayers(payload.players);
+        });
+
+        socket.on('vc:moved', payload => {
+            store.updateVcPlayer(payload);
+        });
+
         socket.on('error', ({ message }) => {
             store.addChat({ type: 'system', text: `⚠️ ${message}` });
         });

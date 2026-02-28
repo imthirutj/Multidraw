@@ -6,6 +6,7 @@ import UserProfile from './UserProfile';
 export default function WaitingScreen() {
     const { roomCode, roomName, players, isHost, username, totalRounds, roundDuration, hostTransferRequestedBy, gameType } = useGameStore();
     const isWatchTogether = gameType === 'watch_together';
+    const isVisitCity = gameType === 'visit_city';
 
 
     const [transferCountdown, setTransferCountdown] = React.useState(10);
@@ -33,7 +34,7 @@ export default function WaitingScreen() {
 
     const handleStart = () => socket.emit('game:start');
 
-    const canStart = isHost && players.length >= (isWatchTogether ? 1 : 2);
+    const canStart = isHost && players.length >= (isWatchTogether || isVisitCity ? 1 : 2);
 
     return (
         <div className="screen waiting-screen">
@@ -114,14 +115,14 @@ export default function WaitingScreen() {
                             <p>
                                 {isHost
                                     ? players.length < 2
-                                        ? (isWatchTogether ? 'You can start now, or wait for friends to join…' : 'Waiting for more players to join…')
-                                        : (isWatchTogether ? 'Ready! Start the watch session when you want.' : 'Ready! Click Start when everyone has joined.')
-                                    : (isWatchTogether ? 'Waiting for the host to start the watch session…' : 'Waiting for the host to start the game…')}
+                                        ? (isWatchTogether || isVisitCity ? 'You can start now, or wait for friends to join…' : 'Waiting for more players to join…')
+                                        : (isWatchTogether || isVisitCity ? 'Ready! Start the session when you want.' : 'Ready! Click Start when everyone has joined.')
+                                    : (isWatchTogether || isVisitCity ? 'Waiting for the host to start the session…' : 'Waiting for the host to start the game…')}
                             </p>
                         </div>
                         {canStart && (
                             <button className="btn btn-primary btn-lg" onClick={handleStart}>
-                                {isWatchTogether ? 'Start Watch Session 🎬' : 'Start Game 🚀'}
+                                {isWatchTogether ? 'Start Watch Session 🎬' : isVisitCity ? 'Enter the City 🏙️' : 'Start Game 🚀'}
                             </button>
                         )}
                         {!isHost && !hostTransferRequestedBy && (
@@ -132,10 +133,11 @@ export default function WaitingScreen() {
                     </div>
 
                     <div className="game-settings-display">
-                        {!isWatchTogether && <span>🔄 <strong>{totalRounds}</strong> Rounds</span>}
-                        {!isWatchTogether && <span>⏱️ <strong>{roundDuration}</strong>s per Round</span>}
+                        {(!isWatchTogether && !isVisitCity) && <span>🔄 <strong>{totalRounds}</strong> Rounds</span>}
+                        {(!isWatchTogether && !isVisitCity) && <span>⏱️ <strong>{roundDuration}</strong>s per Round</span>}
                         <span>👥 <strong>{players.length}</strong> Players</span>
                         {isWatchTogether && <span>🎛️ <strong>Host</strong> controls playback</span>}
+                        {isVisitCity && <span>🏘️ <strong>Social</strong> roaming mode</span>}
                     </div>
                 </div>
             </div>

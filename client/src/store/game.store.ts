@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Player, ChatMessage, Screen, GameStatus, WatchTogetherStatePayload, PublicBookmark } from '../types/game.types';
+import type { Player, ChatMessage, Screen, GameStatus, WatchTogetherStatePayload, PublicBookmark, VisitCityPlayer } from '../types/game.types';
 
 interface GameState {
     // Identity
@@ -41,6 +41,9 @@ interface GameState {
     leaderboard: Player[];
     fatalError: string | null;
 
+    // Visit City
+    vcPlayers: VisitCityPlayer[];
+
     // Actions
     setMySocketId: (id: string) => void;
     setIdentity: (username: string, avatar: string) => void;
@@ -59,6 +62,8 @@ interface GameState {
     addChat: (msg: ChatMessage) => void;
     setLeaderboard: (lb: Player[]) => void;
     setFatalError: (err: string | null) => void;
+    setVcPlayers: (ps: VisitCityPlayer[]) => void;
+    updateVcPlayer: (p: VisitCityPlayer) => void;
     reset: () => void;
 }
 
@@ -92,6 +97,7 @@ const initialState = {
     chatMessages: [] as ChatMessage[],
     leaderboard: [] as Player[],
     fatalError: null as string | null,
+    vcPlayers: [] as VisitCityPlayer[],
 };
 
 export const useGameStore = create<GameState>(set => ({
@@ -115,5 +121,11 @@ export const useGameStore = create<GameState>(set => ({
         set(s => ({ chatMessages: [...s.chatMessages.slice(-200), msg] })),
     setLeaderboard: leaderboard => set({ leaderboard }),
     setFatalError: fatalError => set({ fatalError }),
+    setVcPlayers: vcPlayers => set({ vcPlayers }),
+    updateVcPlayer: p => set(s => ({
+        vcPlayers: s.vcPlayers.find(x => x.socketId === p.socketId)
+            ? s.vcPlayers.map(x => (x.socketId === p.socketId ? p : x))
+            : [...s.vcPlayers, p]
+    })),
     reset: () => set(initialState),
 }));
