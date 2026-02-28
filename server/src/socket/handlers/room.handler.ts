@@ -3,6 +3,7 @@ import type { ClientToServerEvents, ServerToClientEvents } from '../../types/gam
 import { RoomRepository } from '../../repositories/room.repository';
 import { GameService } from '../../services/game.service';
 import { WatchTogetherService } from '../../services/watch.service';
+import { BookmarkRepository } from '../../repositories/bookmark.repository';
 
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -87,7 +88,8 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
 
         if (room.gameType === 'watch_together') {
             socket.emit('wt:state', watchService.getSnapshot(roomCode));
-            socket.emit('wt:bookmarks', { bookmarks: watchService.getPublicBookmarks(roomCode) });
+            const bms = await BookmarkRepository.getAll();
+            socket.emit('wt:bookmarks', { bookmarks: bms });
         }
 
         // If joining mid-game, explicitly sync them into the current round instantly
@@ -152,7 +154,8 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
 
         if (room.gameType === 'watch_together') {
             io.to(roomCode).emit('wt:state', watchService.getSnapshot(roomCode));
-            io.to(roomCode).emit('wt:bookmarks', { bookmarks: watchService.getPublicBookmarks(roomCode) });
+            const bms = await BookmarkRepository.getAll();
+            io.to(roomCode).emit('wt:bookmarks', { bookmarks: bms });
             io.to(roomCode).emit('chat:message', { type: 'system', text: '🎬 Watch Together session started.' });
             return;
         }

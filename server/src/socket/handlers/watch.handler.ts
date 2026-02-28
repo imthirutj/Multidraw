@@ -1,6 +1,7 @@
 import type { Socket, Server } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from '../../types/game.types';
 import { RoomRepository } from '../../repositories/room.repository';
+import { BookmarkRepository } from '../../repositories/bookmark.repository';
 import { WatchTogetherService } from '../../services/watch.service';
 
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -18,38 +19,39 @@ function isValidHttpUrl(url: string): boolean {
 }
 
 export function registerWatchHandlers(io: IoServer, socket: AppSocket, watch: WatchTogetherService): void {
-    socket.on('wt:sync_request', () => {
+    socket.on('wt:sync_request', async () => {
         const { roomCode } = socket.data;
         if (!roomCode) return;
+
+        const bookmarks = await BookmarkRepository.getAll();
+
         socket.emit('wt:state', watch.getSnapshot(roomCode));
-        socket.emit('wt:bookmarks', { bookmarks: watch.getPublicBookmarks(roomCode) });
+        socket.emit('wt:bookmarks', { bookmarks });
     });
 
-    socket.on('wt:bookmark:add', ({ url, title, thumbnailUrl }) => {
+    socket.on('wt:bookmark:add', async ({ url, title, thumbnailUrl }) => {
         const { roomCode, username } = socket.data;
         if (!roomCode) return;
 
         const trimmed = (url || '').trim();
         if (!isValidHttpUrl(trimmed)) return socket.emit('error', { message: 'Invalid bookmark URL' });
 
-        const bookmarks = watch.addPublicBookmark(roomCode, {
-            id: `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        const bookmarks = await BookmarkRepository.add({
             url: trimmed,
             title,
             thumbnailUrl,
             savedBy: username ?? 'Someone',
-            savedAt: Date.now()
         });
 
-        io.to(roomCode).emit('wt:bookmarks', { bookmarks });
+        io.emit('wt:bookmarks', { bookmarks });
     });
 
-    socket.on('wt:bookmark:remove', ({ url }) => {
+    socket.on('wt:bookmark:remove', async ({ url }) => {
         const { roomCode } = socket.data;
         if (!roomCode) return;
 
-        const bookmarks = watch.removePublicBookmark(roomCode, url);
-        io.to(roomCode).emit('wt:bookmarks', { bookmarks });
+        const bookmarks = await BookmarkRepository.remove(url);
+        io.emit('wt:bookmarks', { bookmarks });
     });
 
     socket.on('wt:set_video', async ({ url }) => {

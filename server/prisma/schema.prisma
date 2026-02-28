@@ -40,3 +40,14 @@ model User {
 
   @@map("users")
 }
+
+model PublicBookmark {
+  id           String   @id @default(cuid())
+  url          String   @unique
+  title        String?
+  thumbnailUrl String?
+  savedBy      String
+  createdAt    DateTime @default(now())
+
+  @@map("public_bookmarks")
+}

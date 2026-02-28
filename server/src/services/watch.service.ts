@@ -30,6 +30,10 @@ export class WatchTogetherService {
         return this.bookmarks.get(roomCode) || [];
     }
 
+    setPublicBookmarks(roomCode: string, bms: PublicBookmark[]): void {
+        this.bookmarks.set(roomCode, bms);
+    }
+
     addPublicBookmark(roomCode: string, bookmark: PublicBookmark): PublicBookmark[] {
         const existing = this.bookmarks.get(roomCode) || [];
         if (!existing.some(b => b.url === bookmark.url)) {

@@ -585,15 +585,24 @@ export default function WatchTogetherGame() {
                             }}>{bookmarks.length + watchBookmarks.length}</span>
                         )}
                     </button>
-
-                    <button
-                        className="btn btn-ghost-sm"
-                        style={{ width: 'auto', padding: '8px 12px', marginLeft: 'auto' }}
-                        onClick={resync}
-                        title="Resync with host"
-                    >
-                        ↻ Resync
-                    </button>
+                    <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+                        <button
+                            className="btn btn-ghost-sm"
+                            style={{ width: 'auto', padding: '8px 12px' }}
+                            onClick={resync}
+                            title="Resync with host"
+                        >
+                            ↻ Resync
+                        </button>
+                        <button
+                            className="btn btn-ghost-sm"
+                            style={{ width: 'auto', padding: '8px 12px', color: '#ef4444' }}
+                            onClick={() => window.location.reload()}
+                            title="Leave Room"
+                        >
+                            🚪 Leave
+                        </button>
+                    </div>
                 </div>
 
                 {/* Video + transparent overlay chat wrapper */}
