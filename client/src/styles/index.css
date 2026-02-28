@@ -206,6 +206,7 @@ label {
     letter-spacing: 1px;
 }
 
+input[type="password"],
 input[type="text"],
 input[type="number"],
 input:not([type]),
@@ -225,6 +226,7 @@ input[type="range"]+span {
     width: 100%;
 }
 
+input[type="password"]:hover,
 input[type="text"]:hover,
 input[type="number"]:hover,
 input:not([type]):hover,
@@ -233,6 +235,7 @@ select:hover {
     background: rgba(30, 30, 45, 0.7);
 }
 
+input[type="password"]:focus,
 input[type="text"]:focus,
 input[type="number"]:focus,
 input:not([type]):focus,

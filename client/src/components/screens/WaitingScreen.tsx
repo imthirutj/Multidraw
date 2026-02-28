@@ -1,6 +1,7 @@
 import React from 'react';
 import socket from '../../config/socket';
 import { useGameStore } from '../../store/game.store';
+import UserProfile from './UserProfile';
 
 export default function WaitingScreen() {
     const { roomCode, roomName, players, isHost, username, totalRounds, roundDuration, hostTransferRequestedBy, gameType } = useGameStore();
@@ -41,7 +42,7 @@ export default function WaitingScreen() {
             </div>
 
             <div className="waiting-container">
-                <div className="waiting-header">
+                <div className="waiting-header" style={{ flexWrap: 'wrap' }}>
                     <div className="room-info">
                         <h2>{roomName}</h2>
                         <div className="room-code-badge">
@@ -51,13 +52,14 @@ export default function WaitingScreen() {
                             <button onClick={copyLink} title="Copy invite link">🔗</button>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                         {isHost && (
                             <button className="btn btn-ghost-sm" style={{ color: '#ff4b4b', borderColor: 'rgba(255, 75, 75, 0.3)' }} onClick={() => setIsDeletingRoom(true)}>
                                 Delete Room
                             </button>
                         )}
                         <button className="btn btn-ghost-sm" onClick={() => window.location.reload()}>Leave</button>
+                        <UserProfile inline />
                     </div>
                 </div>
 

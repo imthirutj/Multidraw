@@ -7,6 +7,7 @@ import Chat from '../game/Chat';
 import TruthOrDareGame from '../game/TruthOrDareGame';
 import WatchTogetherGame from '../game/WatchTogetherGame';
 import BottleSpinGame from '../game/BottleSpinGame';
+import UserProfile from './UserProfile';
 import type { DrawTool } from '../../types/game.types';
 import socket from '../../config/socket';
 
@@ -25,6 +26,7 @@ export default function GameScreen() {
     const [brushSize, setBrushSize] = useState(6);
     const [tool, setTool] = useState<DrawTool>('brush');
     const [overlay, setOverlay] = useState<{ icon: string; title: string; sub: string } | null>(null);
+    const [isDeletingRoom, setIsDeletingRoom] = useState(false);
     const overlayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const { canvasRef, clearCanvas, handleUndo, handleClear, onPointerDown, onPointerMove, onPointerUp } = useCanvas({ isDrawer, color, brushSize, tool });
@@ -51,14 +53,14 @@ export default function GameScreen() {
         const drawerName = players.find(p => p.socketId === drawerSocketId)?.username ?? 'Someone';
         const icon = isDrawer ? '✏️' : '🎯';
         const title = isDrawer ? 'Your turn to draw!' : `${drawerName} is drawing!`;
-        const sub = isDrawer ? `Draw: "${currentWord}"` : 'Type your guess below!';
+        const sub = isDrawer && currentWord ? `Draw: "${currentWord}"` : 'Type your guess below!';
         setOverlay({ icon, title, sub });
         clearCanvas();
 
         if (overlayTimer.current) clearTimeout(overlayTimer.current);
         overlayTimer.current = setTimeout(() => setOverlay(null), 2800);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [round]);
+    }, [round, currentWord]);
 
     // Keep a ref to total time for arc calculation
     useEffect(() => { TOTAL_TIME_REF.current = roundDuration; }, [roundDuration]);
@@ -141,7 +143,7 @@ export default function GameScreen() {
                         <div className="word-display">🍾 Bottle Spin</div>
                     ) : isDrawer || hasGuessed ? (
                         <div className={`word-display ${hasGuessed ? 'correct-word' : ''}`}>
-                            {hint || '_ _ _ _ _'}
+                            {isDrawer && currentWord ? currentWord.split('').join(' ') : (hint || '_ _ _ _ _')}
                         </div>
                     ) : (
                         <label className={`word-display-wrapper ${shake ? 'shake-anim' : ''}`} style={{ position: 'relative', display: 'inline-block', cursor: 'text' }}>
@@ -205,15 +207,12 @@ export default function GameScreen() {
                             <button
                                 className="btn btn-ghost-sm"
                                 style={{ width: 'auto', padding: '6px 10px', fontSize: 11, color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
-                                onClick={() => {
-                                    if (window.confirm("Are you sure you want to permanently delete this room? Everyone will be kicked out.")) {
-                                        socket.emit('room:delete');
-                                    }
-                                }}
+                                onClick={() => setIsDeletingRoom(true)}
                             >
                                 💣 Delete Room
                             </button>
                         )}
+                        <UserProfile inline />
                     </div>
                 </div>
             </div>
@@ -286,6 +285,30 @@ export default function GameScreen() {
                     </div>
 
                     <Chat />
+                </div>
+            )}
+
+            {/* Delete Room Modal */}
+            {isDeletingRoom && (
+                <div className="modal-overlay" onClick={() => setIsDeletingRoom(false)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <h3>Delete Room?</h3>
+                        <p>Are you sure you want to permanently delete this room? Everyone will be kicked out.</p>
+                        <div className="modal-actions">
+                            <button className="btn btn-ghost" onClick={() => setIsDeletingRoom(false)}>
+                                Cancel
+                            </button>
+                            <button
+                                className="btn btn-danger"
+                                onClick={() => {
+                                    socket.emit('room:delete');
+                                    setIsDeletingRoom(false);
+                                }}
+                            >
+                                Yes, Delete It
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

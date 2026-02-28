@@ -66,10 +66,24 @@ export default function Chat({ variant = 'default' }: { variant?: 'default' | 'o
             {variant === 'overlay' && (
                 <button
                     className="btn btn-ghost-sm"
-                    style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 60, padding: '8px 12px', background: 'var(--surface-light)', borderRadius: '20px', boxShadow: '0 4px 10px rgba(0,0,0,0.5)', opacity: isOpen ? 0.7 : 1, pointerEvents: 'auto' }}
+                    style={{
+                        position: 'absolute',
+                        bottom: isOpen ? 'auto' : 10,
+                        top: isOpen ? 5 : 'auto',
+                        left: isOpen ? 'auto' : 10,
+                        right: isOpen ? 5 : 'auto',
+                        zIndex: 60,
+                        padding: isOpen ? '4px 8px' : '8px 12px',
+                        background: isOpen ? 'rgba(255,100,100,0.2)' : 'var(--surface-light)',
+                        color: isOpen ? '#ff8888' : 'inherit',
+                        borderRadius: '20px',
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
+                        pointerEvents: 'auto',
+                        fontSize: isOpen ? '0.8rem' : '1rem'
+                    }}
                     onClick={() => setIsOpen(!isOpen)}
                 >
-                    💬 Chat
+                    {isOpen ? '✖ Close' : '💬 Chat'}
                 </button>
             )}
 

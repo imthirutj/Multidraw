@@ -9,7 +9,16 @@ const randomAvatar = () => AVATARS[Math.floor(Math.random() * AVATARS.length)];
 export default function LobbyScreen() {
     const { setIdentity } = useGameStore();
 
-    const [playerName, setPlayerName] = useState(() => localStorage.getItem('playerName') || '');
+    const [playerName, setPlayerName] = useState(() => {
+        try {
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                const userObj = JSON.parse(userStr);
+                return userObj.username || '';
+            }
+        } catch { }
+        return localStorage.getItem('playerName') || '';
+    });
 
     // Create form
     const [roomName, setRoomName] = useState('');
@@ -142,13 +151,11 @@ export default function LobbyScreen() {
                 {/* Shared Player Name Input */}
                 <div className="card glass-card" style={{ marginBottom: '20px', padding: '15px' }}>
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label>Your Name</label>
+                        <label>Logged in as</label>
                         <input
                             value={playerName}
-                            onChange={e => setPlayerName(e.target.value)}
-                            placeholder="Enter your name…"
-                            maxLength={16}
-                            style={{ textAlign: 'center', fontSize: '1.2rem', fontWeight: 'bold' }}
+                            disabled
+                            style={{ textAlign: 'center', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'not-allowed', opacity: 0.8 }}
                         />
                     </div>
                 </div>

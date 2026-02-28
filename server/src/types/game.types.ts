@@ -84,6 +84,7 @@ export interface ServerToClientEvents {
     'room:host_transferred': (payload: { players: Player[]; newHostId: string }) => void;
     'host:requested': (payload: { requesterName: string }) => void;
     'room:kicked': () => void;
+    'room:destroyed': () => void;
 
     'game:starting': () => void;
     'game:over': (payload: { leaderboard: Player[] }) => void;

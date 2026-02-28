@@ -342,7 +342,7 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         watchService.clearRoom(roomCode);
 
         // Notify everyone that the room is gone
-        io.to(roomCode).emit('error', { message: 'The host has deleted the room.' });
+        io.to(roomCode).emit('room:destroyed');
 
         // Disconnect all sockets from the Socket.IO room
         const socks = await io.in(roomCode).fetchSockets();
