@@ -15,7 +15,7 @@ export default function Chat({ variant = 'default', className = '' }: { variant?
     const [isSearchingGifs, setIsSearchingGifs] = useState(false);
     const [isOpen, setIsOpen] = useState(variant !== 'overlay');
     // Controls manual visibility and tracks unread count when hidden
-    const [isHistoryVisible, setIsHistoryVisible] = useState(true);
+    const [isHistoryVisible, setIsHistoryVisible] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const prevMsgCountRef = useRef(chatMessages.length);
 

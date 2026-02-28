@@ -17,14 +17,26 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         if (!room) return socket.emit('error', { message: 'Room not found' });
         if (room.status === 'finished') return socket.emit('error', { message: 'Game already finished' });
 
+        // Set socket data early to prevent ghost players if join fails midway
+        socket.data.roomCode = roomCode;
+        socket.data.username = username;
+
         const oldPlayer = room.players.find(p => p.username === username);
         if (room.players.length >= room.maxPlayers && !oldPlayer) return socket.emit('error', { message: 'Room is full' });
 
         const wasDrawer = oldPlayer && room.currentDrawer === oldPlayer.socketId;
         const wasHost = oldPlayer && room.hostSocketId === oldPlayer.socketId;
 
+        // Ghost pruning: Remove any players whose socket IDs are no longer active in the server
+        // This handles "zombie" players left behind after server restarts or network drops.
+        const prunedPlayers = room.players.filter(p => {
+            const isActive = io.sockets.sockets.has(p.socketId);
+            // Also filter out any existing entry with the same username (rejoin case)
+            return isActive && p.username !== username;
+        });
+
         const players = [
-            ...room.players.filter(p => p.username !== username),
+            ...prunedPlayers,
             {
                 socketId: socket.id,
                 username,
@@ -67,8 +79,6 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         });
 
         socket.join(roomCode);
-        socket.data.roomCode = roomCode;
-        socket.data.username = username;
 
         const isHost = updatedHostSocketId === socket.id;
         const isRejoin = !!oldPlayer; // true when same username was already in the room
@@ -345,13 +355,17 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
     });
 
     socket.on('disconnect', async () => {
-        const { roomCode, username } = socket.data;
-        if (!roomCode || !username) return;
+        const { roomCode } = socket.data;
+        if (!roomCode) return;
 
         const room = await RoomRepository.findByCode(roomCode);
         if (!room) return;
 
+        const playerToRemove = room.players.find(p => p.socketId === socket.id);
+        const username = playerToRemove?.username || socket.data.username || 'Someone';
+
         const players = room.players.filter(p => p.socketId !== socket.id);
+        if (players.length === room.players.length) return; // No player was actually removed
         const hostSocketId =
             room.hostSocketId === socket.id && players.length > 0
                 ? players[0].socketId

@@ -35,9 +35,9 @@ function BottleSVG({ rotation, isSpinning }: { rotation: number; isSpinning: boo
 }
 
 export default function BottleSpinGame() {
-    const { players, mySocketId, drawerSocketId, bsSpin, bsAnswer, isHost } = useGameStore();
+    const { players, mySocketId, drawerSocketId, bsSpin, bsAnswer, isHost, isDrawer } = useGameStore();
 
-    const isSpinner = mySocketId === drawerSocketId;
+    const isSpinner = isDrawer;
     const spinnerName = players.find(p => p.socketId === drawerSocketId)?.username ?? 'Someone';
 
     const [isSpinning, setIsSpinning] = useState(false);
