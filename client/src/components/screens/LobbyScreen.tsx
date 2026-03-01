@@ -52,6 +52,10 @@ export default function LobbyScreen() {
     const [activeChatUser, setActiveChatUser] = useState<string | null>(null);
 
     React.useEffect(() => {
+        if (playerName && !useGameStore.getState().username) {
+            setIdentity(playerName, randomAvatar());
+        }
+
         const params = new URLSearchParams(window.location.search);
         const fromLink = (params.get('room') || '').trim().toUpperCase();
         if (/^[A-Z0-9]{6}$/.test(fromLink)) {
@@ -474,6 +478,38 @@ export default function LobbyScreen() {
             {activeChatUser && (
                 <SnapChatView recipient={activeChatUser} onBack={() => setActiveChatUser(null)} />
             )}
+
+            {/* Global Call Overlay (Only show if not already in a chat) */}
+            {(() => {
+                const call = useGameStore(s => s.incomingCall);
+                if (!call || activeChatUser) return null;
+                return (
+                    <div className="call-overlay incoming">
+                        <div className="call-info">
+                            <img className="call-avatar large-avatar" src={`https://api.dicebear.com/7.x/open-peeps/svg?seed=${call.from}&backgroundColor=transparent`} alt="caller" />
+                            <h3>{call.from}</h3>
+                            <p>Incoming {call.type} call</p>
+                        </div>
+                        <div className="call-actions-bottom" style={{ transform: 'scale(1.2)' }}>
+                            <button className="call-btn accept" onClick={() => {
+                                // Clear error and set active chat — SnapChatView will pick up the offer
+                                setActiveChatUser(call.from);
+                            }}>
+                                Join
+                            </button>
+                            <button className="call-btn decline" onClick={() => {
+                                socket.emit('call:response', { to: call.from, accepted: false });
+                                useGameStore.getState().setIncomingCall(null);
+                            }}>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 }

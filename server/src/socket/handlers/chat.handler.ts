@@ -64,4 +64,9 @@ export function registerChatHandlers(io: IoServer, socket: AppSocket, gameServic
             });
         }
     });
+
+    socket.on('chat:register', ({ username }) => {
+        socket.data.username = username;
+        console.log(`👤 Identified: ${socket.id} as ${username}`);
+    });
 }

@@ -44,6 +44,9 @@ interface GameState {
     // Visit City
     vcPlayers: VisitCityPlayer[];
 
+    // Calling
+    incomingCall: { from: string; offer: any; type: 'audio' | 'video' } | null;
+
     // Actions
     setMySocketId: (id: string) => void;
     setIdentity: (username: string, avatar: string) => void;
@@ -64,6 +67,7 @@ interface GameState {
     setFatalError: (err: string | null) => void;
     setVcPlayers: (ps: VisitCityPlayer[]) => void;
     updateVcPlayer: (p: VisitCityPlayer) => void;
+    setIncomingCall: (call: GameState['incomingCall']) => void;
     reset: () => void;
 }
 
@@ -98,6 +102,7 @@ const initialState = {
     leaderboard: [] as Player[],
     fatalError: null as string | null,
     vcPlayers: [] as VisitCityPlayer[],
+    incomingCall: null as GameState['incomingCall'],
 };
 
 export const useGameStore = create<GameState>(set => ({
@@ -127,5 +132,6 @@ export const useGameStore = create<GameState>(set => ({
             ? s.vcPlayers.map(x => (x.socketId === p.socketId ? p : x))
             : [...s.vcPlayers, p]
     })),
+    setIncomingCall: incomingCall => set({ incomingCall }),
     reset: () => set(initialState),
 }));

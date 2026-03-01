@@ -79,6 +79,14 @@ export interface ClientToServerEvents {
 
     // Visit City
     'vc:move': (payload: VisitCityMovePayload) => void;
+    'chat:register': (payload: { username: string }) => void;
+
+
+    // Direct Calling
+    'call:request': (payload: { to: string; offer: any; type: 'audio' | 'video' }) => void;
+    'call:response': (payload: { to: string; answer?: any; accepted: boolean }) => void;
+    'call:ice': (payload: { to: string; candidate: any }) => void;
+    'call:end': (payload: { to: string }) => void;
 }
 
 // ─── Socket Events: Server → Client ──────────────────────────────────────────
@@ -132,6 +140,13 @@ export interface ServerToClientEvents {
     // Visit City
     'vc:state': (payload: { players: VisitCityPlayer[] }) => void;
     'vc:moved': (payload: VisitCityPlayer) => void;
+
+    // Direct Calling
+    'call:incoming': (payload: { from: string; offer: any; type: 'audio' | 'video' }) => void;
+    'call:accepted': (payload: { from: string; answer: any }) => void;
+    'call:rejected': (payload: { from: string }) => void;
+    'call:ice': (payload: { from: string; candidate: any }) => void;
+    'call:ended': (payload: { from: string }) => void;
 
     error: (payload: { message: string }) => void;
 }

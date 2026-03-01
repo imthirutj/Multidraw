@@ -8,6 +8,7 @@ import { registerRoomHandlers } from './handlers/room.handler';
 import { registerDrawHandlers } from './handlers/draw.handler';
 import { registerChatHandlers } from './handlers/chat.handler';
 import { registerWatchHandlers } from './handlers/watch.handler';
+import { registerCallHandlers } from './handlers/call.handler';
 import env from '../config/env';
 
 export function initSocketServer(httpServer: HttpServer): Server<ClientToServerEvents, ServerToClientEvents> {
@@ -29,6 +30,7 @@ export function initSocketServer(httpServer: HttpServer): Server<ClientToServerE
         registerDrawHandlers(socket);
         registerChatHandlers(io, socket, gameService);
         registerWatchHandlers(io, socket, watchService);
+        registerCallHandlers(io, socket as any);
 
         socket.on('disconnect', () => {
             console.log(`🔌 Disconnected: ${socket.id} (${socket.data.username ?? 'anonymous'})`);

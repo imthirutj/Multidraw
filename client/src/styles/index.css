@@ -2802,6 +2802,151 @@ input[type="range"] {
     display: inline-block;
 }
 
+/* --- Calling UI Styles --- */
+.call-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 6000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 60px 20px;
+}
+
+.call-overlay.incoming {
+    background: linear-gradient(135deg, #2d5a52 0%, #1e3c37 100%);
+    color: #fff;
+}
+
+.call-overlay.active-call {
+    background: #000;
+    color: #fff;
+}
+
+.call-info {
+    text-align: center;
+    animation: fadeInDown 0.5s ease;
+}
+
+.call-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    margin-bottom: 15px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.large-avatar {
+    width: 160px;
+    height: 160px;
+}
+
+.call-info h3 {
+    font-size: 1.8rem;
+    margin: 0;
+    font-weight: 800;
+}
+
+.call-info p {
+    opacity: 0.8;
+    font-weight: 600;
+}
+
+.call-actions-bottom {
+    display: flex;
+    gap: 30px;
+    align-items: center;
+    margin-bottom: 40px;
+}
+
+.call-btn {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: 800;
+    transition: transform 0.2s;
+}
+
+.call-btn:active {
+    transform: scale(0.9);
+}
+
+.call-btn.accept {
+    width: auto;
+    padding: 0 40px;
+    height: 60px;
+    border-radius: 30px;
+    background: #10b981;
+    color: #fff;
+    font-size: 1.1rem;
+}
+
+.call-btn.decline {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.call-btn.end-call {
+    background: #ff4141;
+    color: #fff;
+    width: 80px;
+    height: 80px;
+}
+
+/* Video specific */
+.remote-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -1;
+}
+
+.local-video-pip {
+    position: absolute;
+    top: 40px;
+    right: 20px;
+    width: 120px;
+    height: 180px;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 2px solid #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+.audio-call-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* Chat Sticker Styles */
 .sticker-msg-container {
     background: transparent;

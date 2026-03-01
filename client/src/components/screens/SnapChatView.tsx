@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import socket from '../../config/socket';
+import { useGameStore } from '../../store/game.store';
 
 interface SnapChatViewProps {
     recipient: string;
@@ -47,6 +48,17 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
     const cameraChunksRef = useRef<Blob[]>([]);
     const cameraRecorderRef = useRef<MediaRecorder | null>(null);
     const longPressTimerRef = useRef<any>(null);
+
+    // Call States
+    const incomingCall = useGameStore(s => s.incomingCall);
+    const setIncomingCall = useGameStore(s => s.setIncomingCall);
+    const [callActive, setCallActive] = useState(false);
+    const [callType, setCallType] = useState<'audio' | 'video'>('audio');
+    const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+    const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+    const peerConnection = useRef<RTCPeerConnection | null>(null);
+    const localVideoRef = useRef<HTMLVideoElement>(null);
+    const remoteVideoRef = useRef<HTMLVideoElement>(null);
 
     const filters = [
         { name: 'none', label: 'Original' },
@@ -109,8 +121,40 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
         };
 
         socket.on('direct_message', handleNewMessage);
+
+        // Call Listeners
+        // Remove local call:incoming listener as it's now handled globally via store
+
+
+        socket.on('call:accepted', async ({ answer }) => {
+            if (peerConnection.current) {
+                await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
+                setCallActive(true);
+            }
+        });
+
+        socket.on('call:rejected', () => {
+            cleanupCall();
+            alert(`${recipient} rejected the call`);
+        });
+
+        socket.on('call:ice', async ({ candidate }) => {
+            if (peerConnection.current) {
+                await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+            }
+        });
+
+        socket.on('call:ended', () => {
+            cleanupCall();
+        });
+
         return () => {
             socket.off('direct_message', handleNewMessage);
+            // socket.off('call:incoming'); // handled globally
+            socket.off('call:accepted');
+            socket.off('call:rejected');
+            socket.off('call:ice');
+            socket.off('call:ended');
         };
     }, [currentUser, recipient]);
 
@@ -621,6 +665,111 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
         }
     };
 
+    // --- Calling Logic ---
+    const setupPeerConnection = (stream: MediaStream) => {
+        const pc = new RTCPeerConnection({
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        });
+
+        stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+        pc.onicecandidate = (event) => {
+            if (event.candidate) {
+                socket.emit('call:ice', { to: recipient, candidate: event.candidate });
+            }
+        };
+
+        pc.ontrack = (event) => {
+            setRemoteStream(event.streams[0]);
+        };
+
+        peerConnection.current = pc;
+        return pc;
+    };
+
+    const initiateCall = async (type: 'audio' | 'video') => {
+        setCallType(type);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: type === 'video',
+                audio: true
+            });
+            setLocalStream(stream);
+            const pc = setupPeerConnection(stream);
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            socket.emit('call:request', { to: recipient, offer, type });
+            setCallActive(true); // show local preview while waiting
+        } catch (err) {
+            console.error("Calling failed:", err);
+            alert("Could not access camera/mic for calling");
+        }
+    };
+
+    const handleAcceptCall = async () => {
+        if (!incomingCall) return;
+        const type = incomingCall.type;
+        setCallType(type);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: type === 'video',
+                audio: true
+            });
+            setLocalStream(stream);
+            const pc = setupPeerConnection(stream);
+            await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+
+            socket.emit('call:response', { to: incomingCall.from, answer, accepted: true });
+            setIncomingCall(null);
+            setCallActive(true);
+        } catch (err) {
+            console.error("Accept failed:", err);
+            cleanupCall();
+        }
+    };
+
+    const handleRejectCall = () => {
+        if (incomingCall) {
+            socket.emit('call:response', { to: incomingCall.from, accepted: false });
+            setIncomingCall(null);
+        }
+    };
+
+    const cleanupCall = () => {
+        if (peerConnection.current) {
+            peerConnection.current.close();
+            peerConnection.current = null;
+        }
+        if (localStream) {
+            localStream.getTracks().forEach(t => t.stop());
+            setLocalStream(null);
+        }
+        setRemoteStream(null);
+        setCallActive(false);
+        setIncomingCall(null);
+    };
+
+    const endCall = () => {
+        socket.emit('call:end', { to: recipient });
+        cleanupCall();
+    };
+
+    // Auto-attach streams to video elements
+    useEffect(() => {
+        if (localVideoRef.current && localStream) {
+            localVideoRef.current.srcObject = localStream;
+        }
+    }, [localStream]);
+
+    useEffect(() => {
+        if (remoteVideoRef.current && remoteStream) {
+            remoteVideoRef.current.srcObject = remoteStream;
+        }
+    }, [remoteStream]);
+
     return (
         <div className="snap-chat-view">
             <div className="snap-chat-header">
@@ -634,12 +783,12 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
                     <h2>{recipient}</h2>
                 </div>
                 <div className="snap-chat-header-right">
-                    <button className="snap-chat-icon-btn">
+                    <button className="snap-chat-icon-btn" onClick={() => initiateCall('audio')}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
                         </svg>
                     </button>
-                    <button className="snap-chat-icon-btn">
+                    <button className="snap-chat-icon-btn" onClick={() => initiateCall('video')}>
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <polygon points="23 7 16 12 23 17 23 7"></polygon>
                             <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
@@ -964,6 +1113,50 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
                                 <line x1="15" y1="9" x2="15.01" y2="9"></line>
                             </svg>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {incomingCall && (
+                <div className="call-overlay incoming">
+                    <div className="call-info">
+                        <img className="call-avatar large-avatar" src={`https://api.dicebear.com/7.x/open-peeps/svg?seed=${incomingCall.from}&backgroundColor=transparent`} alt="caller" />
+                        <h3>{incomingCall.from}</h3>
+                        <p>Incoming {incomingCall.type} call</p>
+                    </div>
+                    <div className="call-actions-bottom">
+                        <button className="call-btn accept" onClick={handleAcceptCall}>Join</button>
+                        <button className="call-btn decline" onClick={handleRejectCall}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {callActive && (
+                <div className="call-overlay active-call">
+                    {callType === 'video' && (
+                        <>
+                            <video ref={remoteVideoRef} autoPlay playsInline className="remote-video" />
+                            <video ref={localVideoRef} autoPlay playsInline muted className="local-video-pip" />
+                        </>
+                    )}
+                    {callType === 'audio' && (
+                        <div className="audio-call-info">
+                            <img className="call-avatar" src={`https://api.dicebear.com/7.x/open-peeps/svg?seed=${recipient}&backgroundColor=transparent`} alt="avatar" />
+                            <h3>{recipient}</h3>
+                            <p>On {callType} call</p>
+                        </div>
+                    )}
+                    <div className="call-actions-bottom">
+                        <button className="call-btn end-call" onClick={endCall}>
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" transform="rotate(135 12 12)" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
             )}
