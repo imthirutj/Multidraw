@@ -35,8 +35,9 @@ function BottleSVG({ rotation, isSpinning }: { rotation: number; isSpinning: boo
 }
 
 export default function BottleSpinGame() {
-    const { players, mySocketId, drawerSocketId, bsSpin, bsAnswer, isHost, isDrawer } = useGameStore();
+    const { players, mySocketId, username, drawerSocketId, bsSpin, bsAnswer, isHost, isDrawer } = useGameStore();
 
+    const myUsername = username || players.find(p => p.socketId === mySocketId)?.username || '';
     const isSpinner = isDrawer;
     const spinnerName = players.find(p => p.socketId === drawerSocketId)?.username ?? 'Someone';
 
@@ -57,6 +58,9 @@ export default function BottleSpinGame() {
 
     const circleRef = useRef<HTMLDivElement>(null);
     const [circleRadius, setCircleRadius] = useState(100);
+
+    // Confirmation Modal state
+    const [showForceConfirm, setShowForceConfirm] = useState(false);
 
     // Responsive circle sizing
     useEffect(() => {
@@ -167,8 +171,9 @@ export default function BottleSpinGame() {
         setAnswerInput('');
     };
 
-    const isMyTask = bsSpin?.targetSocketId === mySocketId;
-    const targetName = players.find(p => p.socketId === bsSpin?.targetSocketId)?.username ?? 'Someone';
+    const targetPlayer = players.find(p => p.socketId === bsSpin?.targetSocketId);
+    const targetName = targetPlayer?.username ?? 'Someone';
+    const isMyTask = bsSpin && ((bsSpin.targetSocketId === mySocketId) || (targetName !== 'Someone' && targetName === myUsername));
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between', position: 'relative' }}>
@@ -308,11 +313,18 @@ export default function BottleSpinGame() {
                         const isTarget = bsSpin?.targetIndex === i;
                         const isCurSpinner = p.socketId === drawerSocketId;
                         const isMe = p.socketId === mySocketId;
+                        const isOffline = p.isConnected === false;
 
                         let bg = 'rgba(255,255,255,0.06)';
                         let border = 'rgba(255,255,255,0.12)';
                         let shadow = 'none';
                         let scale = 1;
+                        let opacity = 1;
+
+                        if (isOffline) {
+                            bg = 'rgba(0,0,0,0.3)';
+                            opacity = 0.55;
+                        }
 
                         if (isTarget && showTask) { bg = 'rgba(20,184,166,0.28)'; border = '#14b8a6'; shadow = '0 0 22px rgba(20,184,166,0.55)'; scale = 1.18; }
                         else if (isTarget && isSpinning) { bg = 'rgba(20,184,166,0.12)'; border = 'rgba(20,184,166,0.4)'; }
@@ -329,12 +341,17 @@ export default function BottleSpinGame() {
                                 boxShadow: shadow, borderRadius: 12,
                                 padding: '6px 8px', textAlign: 'center', minWidth: 52,
                                 transition: 'all 0.4s ease', zIndex: isTarget ? 5 : 2,
+                                opacity: opacity,
+                                filter: isOffline ? 'grayscale(0.8)' : 'none'
                             }}>
-                                <div style={{ fontSize: avatarSize }}>{p.avatar || '🎮'}</div>
-                                <div style={{ fontSize: nameSize, fontWeight: 700, whiteSpace: 'nowrap', color: isMe ? '#14b8a6' : '#fff', marginTop: 2 }}>
+                                <div style={{ fontSize: avatarSize, position: 'relative' }}>
+                                    {p.avatar || '🎮'}
+                                    {isOffline && <span style={{ position: 'absolute', top: -4, right: -4, fontSize: '0.6rem' }}>💤</span>}
+                                </div>
+                                <div style={{ fontSize: nameSize, fontWeight: 700, whiteSpace: 'nowrap', color: isMe ? '#14b8a6' : (isOffline ? '#6b7280' : '#fff'), marginTop: 2 }}>
                                     {p.username.length > 7 ? p.username.slice(0, 7) + '…' : p.username}
                                 </div>
-                                <div style={{ fontSize: '0.52rem', color: '#9ca3af' }}>{p.score}pt</div>
+                                <div style={{ fontSize: '0.52rem', color: isOffline ? '#4b5563' : '#9ca3af' }}>{p.score}pt</div>
                             </div>
                         );
                     })}
@@ -561,7 +578,7 @@ export default function BottleSpinGame() {
                                 </span>
                                 {(isSpinner || isHost) && (
                                     <button
-                                        onClick={() => handleResolve('complete')}
+                                        onClick={() => setShowForceConfirm(true)}
                                         style={{ flexShrink: 0, padding: '6px 12px', fontSize: '0.75rem', background: 'rgba(255,255,255,0.07)', border: '1px solid var(--border)', color: 'var(--text-muted)', borderRadius: 8, cursor: 'pointer' }}
                                     >Force ▶</button>
                                 )}
@@ -571,6 +588,46 @@ export default function BottleSpinGame() {
                 )}
 
             </div>
+
+            {/* ═══ Force Confirm Modal ═══ */}
+            {showForceConfirm && (
+                <div style={{
+                    position: 'absolute', inset: 0, zIndex: 300,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+                    animation: 'bsFadeIn 0.25s ease',
+                }}>
+                    <div style={{
+                        background: 'var(--surface)', border: '1px solid var(--border)',
+                        borderRadius: 20, padding: '24px', maxWidth: 320, width: '85%',
+                        textAlign: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.6)',
+                        animation: 'bsSlideUp 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28)',
+                    }}>
+                        <div style={{ fontSize: '2.5rem', marginBottom: 16 }}>⚡</div>
+                        <h3 style={{ margin: '0 0 10px 0', fontSize: '1.25rem', fontWeight: 800 }}>Force Resolve?</h3>
+                        <p style={{ margin: '0 0 24px 0', color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                            Are you sure you want to force complete this challenge for <strong>{targetName}</strong>? This will skip to the next player.
+                        </p>
+                        <div style={{ display: 'flex', gap: 10 }}>
+                            <button
+                                onClick={() => { handleResolve('complete'); setShowForceConfirm(false); }}
+                                style={{
+                                    flex: 1, padding: '12px', borderRadius: 12, border: 'none',
+                                    background: 'linear-gradient(135deg, #14b8a6, #0d9488)',
+                                    color: '#fff', fontWeight: 700, cursor: 'pointer'
+                                }}
+                            >Yes, Skip it!</button>
+                            <button
+                                onClick={() => setShowForceConfirm(false)}
+                                style={{
+                                    flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--border)',
+                                    background: 'transparent', color: '#aaa', fontWeight: 600, cursor: 'pointer'
+                                }}
+                            >Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <Chat variant="default" className="bs-floating-chat" />
 

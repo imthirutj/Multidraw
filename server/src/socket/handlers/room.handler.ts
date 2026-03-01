@@ -43,7 +43,8 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
                 username,
                 avatar: avatar || '',
                 score: oldPlayer?.score || 0,
-                hasGuessedCorrectly: oldPlayer?.hasGuessedCorrectly || false
+                hasGuessedCorrectly: oldPlayer?.hasGuessedCorrectly || false,
+                isConnected: true,
             },
         ];
 
@@ -421,19 +422,24 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         const playerToRemove = room.players.find(p => p.socketId === socket.id);
         const username = playerToRemove?.username || socket.data.username || 'Someone';
 
-        const players = room.players.filter(p => p.socketId !== socket.id);
-        if (players.length === room.players.length) return; // No player was actually removed
+        const players = room.players.map(p => {
+            if (p.socketId === socket.id) return { ...p, isConnected: false };
+            return p;
+        });
+
         const hostSocketId =
-            room.hostSocketId === socket.id && players.length > 0
-                ? players[0].socketId
+            room.hostSocketId === socket.id
+                ? (players.find(p => p.isConnected)?.socketId || room.hostSocketId)
                 : room.hostSocketId;
 
         await RoomRepository.save(roomCode, { players, hostSocketId });
         io.to(roomCode).emit('player:left', { players, username, newHostId: hostSocketId });
         io.to(roomCode).emit('chat:message', { type: 'system', text: `${username} left the room` });
 
-        if (room.gameType !== 'watch_together') {
-            if (room.status === 'playing' && room.currentDrawer === socket.id) {
+        if (room.gameType !== 'watch_together' && room.gameType !== 'visit_city') {
+            // Only skip round if it's NOT bottle spin (which is endless/relaxed)
+            // or if we really want to skip it. For bottle spin, we can just wait for them to reconnect.
+            if (room.status === 'playing' && room.currentDrawer === socket.id && room.gameType === 'drawing') {
                 io.to(roomCode).emit('chat:message', { type: 'system', text: 'Drawer left — skipping round…' });
                 setTimeout(() => gameService.endRound(roomCode), 1_500);
             }

@@ -9,6 +9,7 @@ export interface Player {
     avatar: string;
     score: number;
     hasGuessedCorrectly: boolean;
+    isConnected?: boolean;
 }
 
 // ─── Round History ────────────────────────────────────────────────────────────
