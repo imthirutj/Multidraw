@@ -59,6 +59,24 @@ export default function BottleSpinGame() {
     const circleRef = useRef<HTMLDivElement>(null);
     const [circleRadius, setCircleRadius] = useState(100);
 
+    // Audio Refs
+    const spinAudio = useRef<HTMLAudioElement | null>(null);
+    const stopAudio = useRef<HTMLAudioElement | null>(null);
+    const doneAudio = useRef<HTMLAudioElement | null>(null);
+
+    // Initialize audio
+    useEffect(() => {
+        spinAudio.current = new Audio('/sounds/spin.mp3');
+        spinAudio.current.loop = true;
+        stopAudio.current = new Audio('/sounds/stop.mp3');
+        doneAudio.current = new Audio('/sounds/done.mp3');
+
+        return () => {
+            spinAudio.current?.pause();
+            spinAudio.current = null;
+        };
+    }, []);
+
     // Confirmation Modal state
     const [showForceConfirm, setShowForceConfirm] = useState(false);
 
@@ -96,8 +114,22 @@ export default function BottleSpinGame() {
             setShowTask(false);
             setShowPromptMode(false);
 
+            // Play spin sound
+            if (spinAudio.current) {
+                spinAudio.current.currentTime = 0;
+                spinAudio.current.play().catch(() => { });
+            }
+
             const t = setTimeout(() => {
                 setIsSpinning(false);
+                // Stop spin sound, play stop sound
+                if (spinAudio.current) {
+                    spinAudio.current.pause();
+                }
+                if (stopAudio.current) {
+                    stopAudio.current.play().catch(() => { });
+                }
+
                 if (!bsSpin.promptText) {
                     setShowPromptMode(true);
                 } else {
@@ -169,6 +201,11 @@ export default function BottleSpinGame() {
         const pointDelta = action === 'complete' ? 1 : action === 'skip' ? -1 : -2;
         socket.emit('bs:resolve', { action, pointDelta, answer: answerInput.trim() });
         setAnswerInput('');
+
+        // Play success sound if completed
+        if (action === 'complete' && doneAudio.current) {
+            doneAudio.current.play().catch(() => { });
+        }
     };
 
     const targetPlayer = players.find(p => p.socketId === bsSpin?.targetSocketId);
