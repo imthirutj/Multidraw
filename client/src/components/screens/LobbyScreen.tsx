@@ -15,7 +15,7 @@ const GAME_MODES = [
 ];
 
 export default function LobbyScreen() {
-    const { setIdentity } = useGameStore();
+    const { setIdentity, avatar: myAvatar, username: myUsername } = useGameStore();
 
     const [playerName] = useState(() => {
         try {
@@ -50,10 +50,22 @@ export default function LobbyScreen() {
     const [selectedMode, setSelectedMode] = useState<string | null>(null);
     const [showJoinModal, setShowJoinModal] = useState(false);
     const [activeChatUser, setActiveChatUser] = useState<string | null>(null);
+    const [showProfile, setShowProfile] = useState(false);
 
     React.useEffect(() => {
         if (playerName && !useGameStore.getState().username) {
-            setIdentity(playerName, randomAvatar());
+            // Load saved profile if available
+            try {
+                const userStr = localStorage.getItem('user');
+                if (userStr) {
+                    const user = JSON.parse(userStr);
+                    setIdentity(user.username, user.avatar, user.bio);
+                } else {
+                    setIdentity(playerName, randomAvatar());
+                }
+            } catch (e) {
+                setIdentity(playerName, randomAvatar());
+            }
         }
 
         const params = new URLSearchParams(window.location.search);
@@ -114,6 +126,47 @@ export default function LobbyScreen() {
         };
     }, [playerName]);
 
+    // -- Mobile Back Navigation Handling --
+    React.useEffect(() => {
+        // Intercept browser back button
+        const handlePopState = () => {
+            setActiveChatUser(null);
+            setSelectedMode(null);
+            setShowJoinModal(false);
+            setShowProfile(false);
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
+
+    // Helper to open sub-views with history state
+    const openChat = (username: string) => {
+        window.history.pushState({ chat: username }, '');
+        setActiveChatUser(username);
+    };
+
+    const openModeSelector = () => {
+        window.history.pushState({ mode: true }, '');
+        setSelectedMode('create');
+        setActiveTab('games');
+    };
+
+    const openJoinModal = () => {
+        window.history.pushState({ join: true }, '');
+        setShowJoinModal(true);
+    };
+
+    const openProfile = () => {
+        window.history.pushState({ profile: true }, '');
+        setShowProfile(true);
+    };
+
+    // Helper to close sub-views (triggers handlePopState via hardware back or manual back)
+    const goBack = () => {
+        window.history.back();
+    };
+
     React.useEffect(() => {
         if (!pendingRoomCode) return;
         const nameToUse = playerName.trim();
@@ -124,7 +177,7 @@ export default function LobbyScreen() {
         setError('');
         handleJoin(pendingRoomCode);
         setPendingRoomCode(null);
-        window.history.replaceState({}, '', window.location.pathname);
+        window.history.replaceState({ root: true }, '', window.location.pathname);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pendingRoomCode, playerName]);
 
@@ -174,7 +227,7 @@ export default function LobbyScreen() {
             });
             const data = await res.json();
             if (!res.ok) return setError(data.error || 'Failed to create room');
-            socket.emit('room:join', { roomCode: data.roomCode, username: nameToUse, avatar });
+            socket.emit('room:join', { roomCode: data.roomCode, username: myUsername, avatar: myAvatar });
         } catch {
             setError('Server unreachable.');
         }
@@ -187,9 +240,8 @@ export default function LobbyScreen() {
 
         const code = (codeOverride || joinCode).trim().toUpperCase();
         if (code.length !== 6) return setError('Enter a valid 6-character room code');
-        const avatar = randomAvatar();
-        setIdentity(nameToUse, avatar);
-        socket.emit('room:join', { roomCode: code, username: nameToUse, avatar });
+
+        socket.emit('room:join', { roomCode: code, username: myUsername || nameToUse, avatar: myAvatar });
     };
 
     // Helper for randomizing avatar bubbles in SNAP list
@@ -207,6 +259,15 @@ export default function LobbyScreen() {
         return gradients[Math.abs(hash) % gradients.length];
     };
 
+    const getAvatarUrl = (user: { username: string, avatar?: string }) => {
+        const seedOrUrl = user.avatar;
+        if (!seedOrUrl) return `https://api.dicebear.com/7.x/open-peeps/svg?seed=${user.username}&backgroundColor=transparent`;
+        if (seedOrUrl.startsWith('data:') || seedOrUrl.startsWith('http') || seedOrUrl.startsWith('/api/chat/file')) {
+            return seedOrUrl;
+        }
+        return `https://api.dicebear.com/7.x/open-peeps/svg?seed=${seedOrUrl}&backgroundColor=transparent`;
+    };
+
     const getStreak = (seed: string) => {
         const streakEmojis = ['🦋', '✨', '🔥', '🥂', '💕', '💀', '👽'];
         let hash = 0;
@@ -222,7 +283,17 @@ export default function LobbyScreen() {
             {/* SNAP HEADER */}
             <div className="snap-header-light">
                 <div className="snap-header-left">
-                    <UserProfile inline snapStyle />
+                    <button
+                        className="snap-icon-btn-light"
+                        style={{ width: '36px', height: '36px', padding: 0, overflow: 'hidden', background: '#eee', borderRadius: '50%', border: '2px solid #fff' }}
+                        onClick={openProfile}
+                    >
+                        <img
+                            src={getAvatarUrl({ username: myUsername, avatar: myAvatar })}
+                            alt="avatar"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                    </button>
                     <button className="snap-icon-btn-light">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="11" cy="11" r="8"></circle>
@@ -234,7 +305,7 @@ export default function LobbyScreen() {
                     <h1 style={{ fontSize: '1.4rem', fontWeight: 800 }}>{activeTab === 'rooms' ? 'Rooms' : 'Chat'}</h1>
                 </div>
                 <div className="snap-header-right">
-                    <button className="snap-icon-btn-light" onClick={() => setShowJoinModal(true)}>
+                    <button className="snap-icon-btn-light" onClick={openJoinModal}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                             <circle cx="8.5" cy="7" r="4"></circle>
@@ -242,7 +313,7 @@ export default function LobbyScreen() {
                             <line x1="23" y1="11" x2="17" y2="11"></line>
                         </svg>
                     </button>
-                    <button className="snap-icon-btn-light" onClick={() => setSelectedMode('create')}>
+                    <button className="snap-icon-btn-light" onClick={openModeSelector}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#555' }}>
                             <circle cx="5" cy="12" r="2"></circle>
                             <circle cx="12" cy="12" r="2"></circle>
@@ -282,7 +353,7 @@ export default function LobbyScreen() {
                                 { text: 'Delivered', color: '#3b82f6', icon: '➤' },
                                 { text: 'Received', color: '#8b5cf6', icon: '🔲' },
                                 { text: 'Opened', color: '#10b981', icon: '▻' },
-                                { text: 'Chat from ' + u.username, color: '#0ea5e9', icon: '💬' }
+                                { text: 'Chat from ' + (u.displayName || u.username), color: '#0ea5e9', icon: '💬' }
                             ];
                             const status = statuses[i % statuses.length];
 
@@ -291,14 +362,14 @@ export default function LobbyScreen() {
                             const time = times[i % times.length];
 
                             return (
-                                <div key={u.id} className="snap-row-light" onClick={() => setActiveChatUser(u.username)}>
-                                    <div className="snap-avatar-light" style={{ background: '#eee' }}>
-                                        <img src={`https://api.dicebear.com/7.x/open-peeps/svg?seed=${u.username}&backgroundColor=transparent`} alt="avatar" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
+                                <div key={u.id} className="snap-row-light" onClick={() => openChat(u.username)}>
+                                    <div className="snap-avatar-light" style={{ background: '#eee', overflow: 'hidden' }}>
+                                        <img src={getAvatarUrl(u)} alt="avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                                     </div>
 
                                     <div className="snap-row-content-light">
                                         <div className="snap-row-top-light">
-                                            <span className="snap-room-name-light">{u.username}</span>
+                                            <span className="snap-room-name-light">{u.displayName || u.username}</span>
                                         </div>
                                         <div className="snap-row-bottom-light">
                                             <span style={{ color: status.color, marginRight: 4 }}>{status.icon}</span>
@@ -399,7 +470,7 @@ export default function LobbyScreen() {
                     </svg>
                 </button>
 
-                <button className={`snap-nav-item-dark ${activeTab === 'games' ? 'active' : ''}`} onClick={() => { setActiveTab('games'); setSelectedMode('create'); }}>
+                <button className={`snap-nav-item-dark ${activeTab === 'games' ? 'active' : ''}`} onClick={openModeSelector}>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'games' ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <polygon points="5 3 19 12 5 21 5 3" />
                     </svg>
@@ -408,7 +479,7 @@ export default function LobbyScreen() {
 
             {/* Join Modal */}
             {showJoinModal && (
-                <div className="modal-overlay" onClick={() => setShowJoinModal(false)}>
+                <div className="modal-overlay" onClick={goBack}>
                     <div className="modal-content snap-modal" onClick={e => e.stopPropagation()}>
                         <h2>Enter Room Code</h2>
                         <input
@@ -425,9 +496,9 @@ export default function LobbyScreen() {
 
             {/* Discover / Create Modal */}
             {selectedMode === 'create' && (
-                <div className="modal-overlay" onClick={() => setSelectedMode(null)} style={{ alignItems: 'flex-end', padding: 0 }}>
+                <div className="modal-overlay" onClick={goBack} style={{ alignItems: 'flex-end', padding: 0 }}>
                     <div className="modal-content snap-drawer" onClick={e => e.stopPropagation()}>
-                        <div className="drawer-handle" onClick={() => setSelectedMode(null)} />
+                        <div className="drawer-handle" onClick={goBack} />
                         <h2 style={{ textAlign: 'left', marginBottom: 20 }}>Select Game Mode</h2>
 
                         <div className="snap-modes-grid">
@@ -476,7 +547,11 @@ export default function LobbyScreen() {
             )}
 
             {activeChatUser && (
-                <SnapChatView recipient={activeChatUser} onBack={() => setActiveChatUser(null)} />
+                <SnapChatView recipient={activeChatUser} onBack={goBack} />
+            )}
+
+            {showProfile && (
+                <UserProfile onBack={goBack} />
             )}
 
             {/* Global Call Overlay */}
@@ -494,7 +569,7 @@ export default function LobbyScreen() {
                         <div className="call-actions-bottom" style={{ transform: 'scale(1.2)' }}>
                             <button className="call-btn accept" onClick={() => {
                                 // Clear error and set active chat — SnapChatView will pick up the offer
-                                setActiveChatUser(call.from);
+                                openChat(call.from);
                             }}>
                                 Join
                             </button>

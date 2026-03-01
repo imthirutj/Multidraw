@@ -5,7 +5,9 @@ interface GameState {
     // Identity
     mySocketId: string;
     username: string;
+    displayName: string;
     avatar: string;
+    bio: string;
 
     // Room
     roomCode: string;
@@ -51,7 +53,7 @@ interface GameState {
 
     // Actions
     setMySocketId: (id: string) => void;
-    setIdentity: (username: string, avatar: string) => void;
+    setIdentity: (username: string, avatar: string, bio?: string, displayName?: string) => void;
     setRoom: (payload: Partial<GameState>) => void;
     setPlayers: (players: Player[]) => void;
     setScreen: (screen: Screen) => void;
@@ -78,7 +80,9 @@ interface GameState {
 const initialState = {
     mySocketId: '',
     username: '',
+    displayName: '',
     avatar: '',
+    bio: '',
     roomCode: '',
     roomName: '',
     gameType: 'drawing',
@@ -115,7 +119,7 @@ export const useGameStore = create<GameState>(set => ({
     ...initialState,
 
     setMySocketId: id => set({ mySocketId: id }),
-    setIdentity: (username, avatar) => set({ username, avatar }),
+    setIdentity: (username, avatar, bio = '', displayName = '') => set({ username, avatar, bio, displayName: displayName || username }),
     setRoom: payload => set(payload),
     setPlayers: players => set({ players }),
     setScreen: screen => set({ screen }),

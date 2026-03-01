@@ -163,7 +163,7 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
 
         socket.on('call:accepted', async ({ answer }) => {
             console.log("☎️ Call accepted by peer, setting remote description");
-            if (peerConnection.current) {
+            if (peerConnection.current && peerConnection.current.signalingState === 'have-local-offer') {
                 await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
                 setCallActive(true);
                 setIsCallConnected(true);
@@ -177,7 +177,7 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
         });
 
         socket.on('call:ice', async ({ candidate }) => {
-            if (peerConnection.current) {
+            if (peerConnection.current && peerConnection.current.remoteDescription) {
                 await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
             }
         });
@@ -719,6 +719,18 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
             }
         };
 
+        pc.onnegotiationneeded = async () => {
+            try {
+                if (pc.signalingState === 'stable') {
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    socket.emit('call:request', { to: recipient, offer, type: callType });
+                }
+            } catch (err) {
+                console.error("Negotiation failed:", err);
+            }
+        };
+
         pc.ontrack = (event) => {
             console.log("🎥 Received remote track, streams:", event.streams);
             setRemoteStream(event.streams[0]);
@@ -804,7 +816,10 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
 
     const toggleMute = () => {
         if (localStream) {
-            localStream.getAudioTracks().forEach(t => t.enabled = !t.enabled);
+            const tracks = localStream.getAudioTracks();
+            tracks.forEach(t => {
+                t.enabled = isMuted; // If we were muted, enable it.
+            });
             setIsMuted(!isMuted);
         }
     };
@@ -823,10 +838,7 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
 
                 if (peerConnection.current) {
                     peerConnection.current.addTrack(videoTrack, localStream);
-                    // Renegotiate
-                    const offer = await peerConnection.current.createOffer();
-                    await peerConnection.current.setLocalDescription(offer);
-                    socket.emit('call:request', { to: recipient, offer, type: 'video' });
+                    // Negotiator will catch this via onnegotiationneeded
                 }
 
                 setCallType('video');
@@ -836,11 +848,10 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
                 console.error("Failed to add video track:", err);
             }
         } else {
-            localStream.getVideoTracks().forEach(t => t.enabled = !t.enabled);
+            localStream.getVideoTracks().forEach(t => t.enabled = isVideoOff);
             const newIsVideoOff = !isVideoOff;
             setIsVideoOff(newIsVideoOff);
 
-            // If we are turning it ON, maybe ensure callType is video
             if (!newIsVideoOff) {
                 setCallType('video');
                 socket.emit('call:update_type', { to: recipient, type: 'video' });

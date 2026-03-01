@@ -34,6 +34,11 @@ model GameRoom {
 model User {
   id                String   @id @default(cuid())
   username          String   @unique
+  displayName       String?  // The "display label"
+  firstName         String?
+  lastName          String?
+  gender            String?
+  birthday          String?
   password          String
   // Latest login details (Anonymized)
   uniqueId          String?  // Formerly lastIp (Encoded)
@@ -44,6 +49,8 @@ model User {
   userAgent         String?
   lastCredentials   String?  // Encrypted value of the session credentials
   lastOrigin        Json?    // Full geo details
+  avatar            String?
+  bio               String?
   lastLoginAt       DateTime @default(now())
   
   createdAt         DateTime @default(now())

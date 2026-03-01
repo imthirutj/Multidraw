@@ -4,20 +4,16 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma';
 import env from '../config/env';
+import { AuthRequest } from '../middleware/auth.middleware';
 
 const router = Router();
-
-// "secret key dont put in .env" - HARDCODED stable secret for IP encoding
 const IP_SECRET = 'MultiDraw_H0st_56516_Secure_Anonymizer';
 
-/** 
- * Encodes an IP address to a consistent uniqueId that doesn't reveal the original IP.
- * Uses SHA-256 with a hardcoded salt to ensure identical IPs map to identical IDs.
- */
 function encodeIp(ip: string): string {
     return crypto.createHmac('sha256', IP_SECRET).update(ip).digest('hex').substring(0, 32);
 }
 
+// ─── LOGIN ROUTE ─────────────────────────────────────────────────────────────
 router.post('/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -25,98 +21,65 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ error: 'Username and password are required' });
         }
 
-        // In this implementation, we will combine login and sign up.
-        // If the user exists, we check the password.
-        // If the user does not exist, we create the user with the given password.
-        let user = await prisma.user.findUnique({
-            where: { username }
-        });
+        const p = prisma as any;
+        const user = await p.user.findUnique({ where: { username } });
 
-        if (user) {
-            // User exists, verify password
-            const isMatch = await bcrypt.compare(password, user.password);
-            if (!isMatch) {
-                return res.status(401).json({ error: 'Invalid password' });
-            }
-        } else {
-            // User does not exist, auto-create them
-            const hashedPassword = await bcrypt.hash(password, 10);
-            user = await prisma.user.create({
-                data: {
-                    username,
-                    password: hashedPassword
-                }
-            });
+        if (!user) {
+            return res.status(401).json({ error: 'User does not exist' });
         }
 
-        // --- FETCH GEOLOCATION AND UPDATE USER SESSION ---
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ error: 'Invalid password' });
+        }
+
+        // Session Setup
         let ip = (req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '').split(',')[0].trim();
         const userAgent = req.headers['user-agent'] || '';
-
-        // Handle localhost/loopback addresses (::1 or 127.0.0.1)
-        // ipapi.co cannot geolocate loopback. In local testing, we fetch the server's own public IP info instead.
         const isLoopback = ip === '::1' || ip === '127.0.0.1' || ip.includes('localhost');
         const geoUrl = isLoopback ? `https://ipapi.co/json/` : `https://ipapi.co/${ip}/json/`;
 
         let geoData: any = {};
         try {
-            // Using ipapi.co/json/ as requested to detect basic details like origin
             const geoResponse = await fetch(geoUrl);
-            if (geoResponse.ok) {
-                geoData = await geoResponse.json();
-            }
+            if (geoResponse.ok) geoData = await geoResponse.json();
         } catch (e) {
-            console.error('Failed to fetch geolocation details:', e);
+            console.error('Failed to fetch geo details:', e);
         }
 
-        // "store ip encoded value with some secret key dont put in .env"
-        // name it called uniqueId
-        const uniqueId = encodeIp(ip);
-
-        // "stor etheir nasic credentials with encrypted value"
-        const credentialsData = `${username}:${password}`;
-        const encryptedCredentials = await bcrypt.hash(credentialsData, 10);
-
-        try {
-            await prisma.user.update({
-                where: { id: user.id },
-                data: {
-                    uniqueId: uniqueId,
-                    lastCity: geoData.city,
-                    lastRegion: geoData.region,
-                    lastCountry: geoData.country_name,
-                    lastOrg: geoData.org,
-                    userAgent: userAgent,
-                    lastCredentials: encryptedCredentials,
-                    lastOrigin: geoData,
-                    lastLoginAt: new Date()
-                }
-            });
-
-            const io = req.app.get('io');
-            if (io) {
-                const users = await prisma.user.findMany({
-                    select: { id: true, username: true, lastLoginAt: true, updatedAt: true },
-                    orderBy: { lastLoginAt: 'desc' }
-                });
-                io.emit('system:update', { type: 'users', data: users });
+        await p.user.update({
+            where: { id: user.id },
+            data: {
+                uniqueId: encodeIp(ip),
+                lastCity: geoData.city,
+                lastRegion: geoData.region,
+                lastCountry: geoData.country_name,
+                lastOrigin: geoData,
+                userAgent: userAgent,
+                lastLoginAt: new Date()
             }
-        } catch (dbError) {
-            console.error('Failed to update login record on user:', dbError);
+        });
+
+        // Broadcast active users update
+        const io = req.app.get('io');
+        if (io) {
+            const users = await p.user.findMany({
+                select: { id: true, username: true, lastLoginAt: true, updatedAt: true, avatar: true, bio: true, displayName: true },
+                orderBy: { lastLoginAt: 'desc' }
+            });
+            io.emit('system:update', { type: 'users', data: users });
         }
 
-        // Return the user object (without password) and token
-        const token = jwt.sign(
-            { id: user.id, username: user.username },
-            env.JWT_SECRET,
-            { expiresIn: '7d' }
-        );
+        const token = jwt.sign({ id: user.id, username: user.username }, env.JWT_SECRET, { expiresIn: '7d' });
 
         res.json({
             token,
             user: {
                 id: user.id,
                 username: user.username,
+                displayName: user.displayName || user.username,
+                avatar: user.avatar,
+                bio: user.bio
             }
         });
     } catch (error) {
@@ -125,14 +88,128 @@ router.post('/login', async (req, res) => {
     }
 });
 
+// ─── SIGNUP ROUTE ────────────────────────────────────────────────────────────
+router.post('/signup', async (req, res) => {
+    try {
+        const { firstName, lastName, username, password, gender, birthday } = req.body;
+
+        if (!username || !password || !firstName) {
+            return res.status(400).json({ error: 'Required fields are missing' });
+        }
+
+        const p = prisma as any;
+        const existing = await p.user.findUnique({ where: { username } });
+        if (existing) {
+            return res.status(400).json({ error: 'Username already taken' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const user = await p.user.create({
+            data: {
+                username,
+                password: hashedPassword,
+                firstName,
+                lastName,
+                displayName: `${firstName} ${lastName}`.trim(),
+                gender,
+                birthday,
+                avatar: `Felix${Math.floor(Math.random() * 1000)}` // Default avatar
+            }
+        });
+
+        const token = jwt.sign({ id: user.id, username: user.username }, env.JWT_SECRET, { expiresIn: '7d' });
+
+        res.status(201).json({
+            token,
+            user: {
+                id: user.id,
+                username: user.username,
+                displayName: user.displayName,
+                avatar: user.avatar,
+                bio: null
+            }
+        });
+    } catch (error) {
+        console.error('Signup error:', error);
+        res.status(500).json({ error: 'Failed to create account' });
+    }
+});
+
+router.post('/upload-avatar', async (req: AuthRequest, res) => {
+    try {
+        const { image } = req.body;
+        if (!image || !image.startsWith('data:')) {
+            return res.status(400).json({ error: 'Valid base64 image required' });
+        }
+
+        const username = req.user?.username || 'unknown';
+        const timestamp = Date.now();
+        const mime = image.split(';')[0].split(':')[1];
+        const ext = mime.split('/')[1] || 'png';
+        const filename = `avatar_${username}_${timestamp}.${ext}`;
+
+        const { DropboxService } = require('../services/dropbox.service');
+        const dropboxFile = await DropboxService.uploadFile(image, filename);
+
+        if (!dropboxFile) {
+            throw new Error('Dropbox upload failed');
+        }
+
+        res.json({ url: `/api/chat/file/${dropboxFile}` });
+    } catch (e) {
+        console.error('Avatar upload error:', e);
+        res.status(500).json({ error: 'Failed to upload avatar' });
+    }
+});
+
+router.patch('/profile', async (req, res) => {
+    try {
+        const { id, username, bio, avatar, displayName } = req.body;
+        if (!id) return res.status(400).json({ error: 'User ID required' });
+
+        const p = prisma as any;
+        const updated = await p.user.update({
+            where: { id },
+            data: { username, bio, avatar, displayName }
+        });
+
+        const io = req.app.get('io');
+        if (io) {
+            const users = await p.user.findMany({
+                select: { id: true, username: true, lastLoginAt: true, updatedAt: true, avatar: true, bio: true, displayName: true },
+                orderBy: { lastLoginAt: 'desc' }
+            });
+            io.emit('system:update', { type: 'users', data: users });
+        }
+
+        res.json({
+            success: true,
+            user: {
+                id: updated.id,
+                username: updated.username,
+                displayName: updated.displayName,
+                avatar: updated.avatar,
+                bio: updated.bio
+            }
+        });
+    } catch (e) {
+        console.error('Update profile error:', e);
+        res.status(500).json({ error: 'Failed to update profile' });
+    }
+});
+
 router.get('/users', async (req, res) => {
     try {
-        const users = await prisma.user.findMany({
+        const p = prisma as any;
+        const users = await p.user.findMany({
             select: {
                 id: true,
                 username: true,
+                displayName: true,
                 lastLoginAt: true,
                 updatedAt: true,
+                avatar: true,
+                bio: true
             },
             orderBy: {
                 lastLoginAt: 'desc'
