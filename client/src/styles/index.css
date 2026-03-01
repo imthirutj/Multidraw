@@ -757,6 +757,8 @@ select option {
     align-items: center;
     justify-content: space-between;
     width: 100%;
+    position: relative;
+    z-index: 10;
 }
 
 .actions-wrapper {
@@ -787,6 +789,8 @@ select option {
     padding: 2px 0 4px;
     gap: 12px;
     width: 100%;
+    position: relative;
+    z-index: 1;
     overflow: visible;
 }
 
