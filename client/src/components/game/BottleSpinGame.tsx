@@ -204,6 +204,8 @@ export default function BottleSpinGame() {
     const [showTask, setShowTask] = useState(false);
     const [localRotation, setLocalRotation] = useState(0);
     const [answerInput, setAnswerInput] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     const [rating, setRating] = useState('pg13');
 
     // Selection phase
@@ -301,6 +303,7 @@ export default function BottleSpinGame() {
             setAnswerInput('');
             setIsChoosingCustom(false);
             setCustomPromptText('');
+            setIsSubmitting(false);
         }
     }, [bsSpin, players.length]);
 
@@ -354,6 +357,8 @@ export default function BottleSpinGame() {
     };
 
     const handleResolve = (action: 'complete' | 'skip' | 'refuse') => {
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         const pointDelta = action === 'complete' ? 1 : action === 'skip' ? -1 : -2;
         socket.emit('bs:resolve', { action, pointDelta, answer: answerInput.trim() });
         setAnswerInput('');
@@ -736,31 +741,35 @@ export default function BottleSpinGame() {
                                     onChange={e => setAnswerInput(e.target.value)}
                                     onKeyDown={e => { if (e.key === 'Enter' && answerInput.trim()) handleResolve('complete'); }}
                                     autoFocus
+                                    disabled={isSubmitting}
                                     style={{
                                         width: '100%', padding: '9px 13px', fontSize: '0.88rem',
                                         borderRadius: 10, background: 'rgba(255,255,255,0.08)',
                                         border: '1px solid rgba(255,255,255,0.18)', color: '#fff',
                                         outline: 'none', boxSizing: 'border-box',
+                                        opacity: isSubmitting ? 0.6 : 1,
                                     }}
                                 />
                                 <div style={{ display: 'flex', gap: 6 }}>
                                     <button
                                         onClick={() => handleResolve('complete')}
-                                        disabled={!answerInput.trim() && bsSpin.promptType === 'truth'}
+                                        disabled={isSubmitting || (!answerInput.trim() && bsSpin.promptType === 'truth')}
                                         style={{
                                             flex: 2, padding: '9px 8px', fontSize: '0.82rem', fontWeight: 700,
                                             background: 'linear-gradient(135deg,#10b981,#059669)',
-                                            color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer',
-                                            opacity: (!answerInput.trim() && bsSpin.promptType === 'truth') ? 0.45 : 1,
+                                            color: '#fff', border: 'none', borderRadius: 10, cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                                            opacity: isSubmitting || (!answerInput.trim() && bsSpin.promptType === 'truth') ? 0.45 : 1,
                                         }}
                                     >✅ Submit (+1 pt)</button>
                                     <button
                                         onClick={() => handleResolve('skip')}
-                                        style={{ flex: 1, padding: '9px 6px', fontSize: '0.8rem', fontWeight: 600, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b', borderRadius: 10, cursor: 'pointer' }}
+                                        disabled={isSubmitting}
+                                        style={{ flex: 1, padding: '9px 6px', fontSize: '0.8rem', fontWeight: 600, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b', borderRadius: 10, cursor: isSubmitting ? 'not-allowed' : 'pointer', opacity: isSubmitting ? 0.5 : 1 }}
                                     >⏭️ Skip</button>
                                     <button
                                         onClick={() => handleResolve('refuse')}
-                                        style={{ flex: 1, padding: '9px 6px', fontSize: '0.8rem', fontWeight: 600, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', borderRadius: 10, cursor: 'pointer' }}
+                                        disabled={isSubmitting}
+                                        style={{ flex: 1, padding: '9px 6px', fontSize: '0.8rem', fontWeight: 600, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', borderRadius: 10, cursor: isSubmitting ? 'not-allowed' : 'pointer', opacity: isSubmitting ? 0.5 : 1 }}
                                     >❌ Refuse</button>
                                 </div>
                             </div>
