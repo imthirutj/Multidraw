@@ -46,6 +46,8 @@ interface GameState {
 
     // Calling
     incomingCall: { from: string; offer: any; type: 'audio' | 'video' } | null;
+    isCallingOutgoing: boolean;
+    isCallConnected: boolean;
 
     // Actions
     setMySocketId: (id: string) => void;
@@ -68,6 +70,8 @@ interface GameState {
     setVcPlayers: (ps: VisitCityPlayer[]) => void;
     updateVcPlayer: (p: VisitCityPlayer) => void;
     setIncomingCall: (call: GameState['incomingCall']) => void;
+    setCallingOutgoing: (val: boolean) => void;
+    setCallConnected: (val: boolean) => void;
     reset: () => void;
 }
 
@@ -103,6 +107,8 @@ const initialState = {
     fatalError: null as string | null,
     vcPlayers: [] as VisitCityPlayer[],
     incomingCall: null as GameState['incomingCall'],
+    isCallingOutgoing: false,
+    isCallConnected: false,
 };
 
 export const useGameStore = create<GameState>(set => ({
@@ -133,5 +139,7 @@ export const useGameStore = create<GameState>(set => ({
             : [...s.vcPlayers, p]
     })),
     setIncomingCall: incomingCall => set({ incomingCall }),
+    setCallingOutgoing: isCallingOutgoing => set({ isCallingOutgoing }),
+    setCallConnected: isCallConnected => set({ isCallConnected }),
     reset: () => set(initialState),
 }));

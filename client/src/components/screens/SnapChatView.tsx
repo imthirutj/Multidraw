@@ -60,11 +60,14 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const remoteVideoRef = useRef<HTMLVideoElement>(null);
 
-    // Call duration timer
     const [callDuration, setCallDuration] = useState(0);
     const [isMuted, setIsMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(false);
-    const [isCallConnected, setIsCallConnected] = useState(false);
+
+    const isCallingOutgoing = useGameStore(s => s.isCallingOutgoing);
+    const setCallingOutgoing = useGameStore(s => s.setCallingOutgoing);
+    const isCallConnected = useGameStore(s => s.isCallConnected);
+    const setIsCallConnected = useGameStore(s => s.setCallConnected);
 
     useEffect(() => {
         let interval: any;
@@ -75,6 +78,8 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
         }
         return () => clearInterval(interval);
     }, [callActive, isCallConnected]);
+
+    // Global hook handles ringtone, so we don't need local ringtone logic here.
 
     const formatDuration = (s: number) => {
         const hrs = Math.floor(s / 3600);
@@ -162,6 +167,7 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
                 await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
                 setCallActive(true);
                 setIsCallConnected(true);
+                setCallingOutgoing(false);
             }
         });
 
@@ -180,6 +186,11 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
             cleanupCall();
         });
 
+        socket.on('call:type_updated', ({ type }) => {
+            console.log("🔄 Peer updated call type to:", type);
+            setCallType(type);
+        });
+
         return () => {
             socket.off('direct_message', handleNewMessage);
             // socket.off('call:incoming'); // handled globally
@@ -187,6 +198,7 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
             socket.off('call:rejected');
             socket.off('call:ice');
             socket.off('call:ended');
+            socket.off('call:type_updated');
         };
     }, [currentUser, recipient]);
 
@@ -730,6 +742,7 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
 
             socket.emit('call:request', { to: recipient, offer, type });
             setCallActive(true); // show local preview while waiting
+            setCallingOutgoing(true);
         } catch (err) {
             console.error("Calling failed:", err);
             alert("Could not access camera/mic for calling");
@@ -780,6 +793,7 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
         setRemoteStream(null);
         setCallActive(false);
         setIsCallConnected(false);
+        setCallingOutgoing(false);
         setIncomingCall(null);
     };
 
@@ -795,10 +809,42 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
         }
     };
 
-    const toggleVideo = () => {
-        if (localStream) {
+    const toggleVideo = async () => {
+        if (!localStream) return;
+
+        const hasVideo = localStream.getVideoTracks().length > 0;
+
+        if (!hasVideo && !isVideoOff) {
+            // Upgrade to video
+            try {
+                const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const videoTrack = videoStream.getVideoTracks()[0];
+                localStream.addTrack(videoTrack);
+
+                if (peerConnection.current) {
+                    peerConnection.current.addTrack(videoTrack, localStream);
+                    // Renegotiate
+                    const offer = await peerConnection.current.createOffer();
+                    await peerConnection.current.setLocalDescription(offer);
+                    socket.emit('call:request', { to: recipient, offer, type: 'video' });
+                }
+
+                setCallType('video');
+                setIsVideoOff(false);
+                socket.emit('call:update_type', { to: recipient, type: 'video' });
+            } catch (err) {
+                console.error("Failed to add video track:", err);
+            }
+        } else {
             localStream.getVideoTracks().forEach(t => t.enabled = !t.enabled);
-            setIsVideoOff(!isVideoOff);
+            const newIsVideoOff = !isVideoOff;
+            setIsVideoOff(newIsVideoOff);
+
+            // If we are turning it ON, maybe ensure callType is video
+            if (!newIsVideoOff) {
+                setCallType('video');
+                socket.emit('call:update_type', { to: recipient, type: 'video' });
+            }
         }
     };
 
@@ -1211,9 +1257,15 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
 
                     {/* MAIN AREA */}
                     <div className="call-main-area">
-                        {callType === 'video' && !isVideoOff ? (
-                            <video ref={remoteVideoRef} autoPlay playsInline className="remote-video-full" />
-                        ) : (
+                        {/* Always render remote video for audio, hide if not video mode */}
+                        <video
+                            ref={remoteVideoRef}
+                            autoPlay
+                            playsInline
+                            className={`remote-video-full ${(callType !== 'video' || isVideoOff) ? 'hidden-audio-only' : ''}`}
+                        />
+
+                        {(callType === 'audio' || isVideoOff) && (
                             <div className="remote-avatar-container">
                                 <img className="remote-avatar-large" src={`https://api.dicebear.com/7.x/open-peeps/svg?seed=${recipient}&backgroundColor=transparent`} alt="remote" />
                             </div>

@@ -2832,6 +2832,14 @@ input[type="range"] {
     flex-direction: column;
 }
 
+.hidden-audio-only {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
 .call-header-premium {
     position: absolute;
     top: 20px;
@@ -2983,19 +2991,20 @@ input[type="range"] {
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    border: none;
     background: rgba(255, 255, 255, 0.2);
-    color: #fff;
+    border: none;
     display: flex;
     align-items: center;
     justify-content: center;
+    color: white;
     cursor: pointer;
     transition: all 0.2s;
 }
 
-.call-control-btn.off {
-    color: #ff4757;
-    background: #fff;
+.call-control-btn.off,
+.call-control-btn.active {
+    background: rgba(255, 255, 255, 1);
+    color: #ff9a8b;
 }
 
 .call-control-btn.end {

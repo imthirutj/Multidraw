@@ -87,6 +87,7 @@ export interface ClientToServerEvents {
     'call:response': (payload: { to: string; answer?: any; accepted: boolean }) => void;
     'call:ice': (payload: { to: string; candidate: any }) => void;
     'call:end': (payload: { to: string }) => void;
+    'call:update_type': (payload: { to: string; type: 'audio' | 'video' }) => void;
 }
 
 // ─── Socket Events: Server → Client ──────────────────────────────────────────
@@ -147,7 +148,7 @@ export interface ServerToClientEvents {
     'call:rejected': (payload: { from: string }) => void;
     'call:ice': (payload: { from: string; candidate: any }) => void;
     'call:ended': (payload: { from: string }) => void;
-
+    'call:type_updated': (payload: { from: string; type: 'audio' | 'video' }) => void;
     error: (payload: { message: string }) => void;
 }
 

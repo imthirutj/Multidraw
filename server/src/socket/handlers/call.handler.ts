@@ -58,4 +58,14 @@ export function registerCallHandlers(io: IoServer, socket: AppSocket): void {
             });
         }
     });
+
+    socket.on('call:update_type', ({ to, type }) => {
+        const targetSocket = findSocketByUsername(to);
+        if (targetSocket) {
+            targetSocket.emit('call:type_updated', {
+                from: socket.data.username!,
+                type
+            });
+        }
+    });
 }

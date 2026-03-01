@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useGameStore } from './store/game.store';
 import { useSocketEvents } from './hooks/useSocketEvents';
+import { useCallRingtone } from './hooks/useCallRingtone';
 import LobbyScreen from './components/screens/LobbyScreen';
 import WaitingScreen from './components/screens/WaitingScreen';
 import GameScreen from './components/screens/GameScreen';
@@ -10,6 +11,7 @@ import UserProfile from './components/screens/UserProfile';
 
 function AuthenticatedApp() {
     useSocketEvents(); // registers all socket listeners once
+    useCallRingtone(); // handles global ringing sounds
     const { screen, fatalError } = useGameStore(s => ({ screen: s.screen, fatalError: s.fatalError }));
     return (
         <>
