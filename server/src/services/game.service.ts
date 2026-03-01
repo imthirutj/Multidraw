@@ -162,8 +162,10 @@ export class GameService {
         };
 
         // Bottle Spin never "finishes" — it just rotates turns indefinitely.
+        // Use a shorter transition delay (1.8s) so next turn starts quickly after answer.
         if (room.gameType === 'bottle_spin') {
-            this.transitionTimers.set(roomCode, setTimeout(runNext, delay));
+            const bsDelay = 1_800;
+            this.transitionTimers.set(roomCode, setTimeout(runNext, bsDelay));
             return;
         }
 

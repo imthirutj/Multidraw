@@ -154,6 +154,8 @@ export function useSocketEvents(): void {
 
         socket.on('bs:answered', payload => {
             store.setBsAnswer(payload);
+            // Update scores immediately so scoreboard reflects changes alongside the overlay
+            if (payload.players) store.setPlayers(payload.players);
         });
 
         socket.on('wt:state', payload => {

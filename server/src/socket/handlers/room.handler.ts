@@ -316,31 +316,31 @@ export function registerRoomHandlers(io: IoServer, socket: AppSocket, gameServic
         const room = await RoomRepository.findByCode(roomCode);
         if (!room || room.status !== 'playing') return;
 
-        // Apply score update
+        // Apply score update and keep updated player list
+        let players = room.players;
         if (pointDelta !== 0) {
-            const players = room.players.map(p => {
+            players = room.players.map(p => {
                 if (p.socketId === socket.id) return { ...p, score: p.score + pointDelta };
                 return p;
             });
             await RoomRepository.save(roomCode, { players });
-            // Sync players visually
-            io.to(roomCode).emit('player:joined', { players, username: '' });
         }
 
-        const player = room.players.find(p => p.socketId === socket.id);
+        const player = players.find(p => p.socketId === socket.id);
         const name = player?.username || 'Someone';
 
-        const spinner = room.players.find(p => p.socketId === room.currentDrawer);
+        const spinner = players.find(p => p.socketId === room.currentDrawer);
         const spinnerName = spinner ? spinner.username : 'Someone';
 
-        // Broadcast answer reveal to all players for prominent display
+        // Broadcast answer reveal + updated scores atomically
         io.to(roomCode).emit('bs:answered', {
             action,
             answer: answer || '',
             targetName: name,
             pointDelta,
             spinnerName,
-            question: room.currentWord
+            question: room.currentWord,
+            players,
         });
 
         if (action === 'complete') {

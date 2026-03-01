@@ -9,30 +9,186 @@ function BottleSVG({ rotation, isSpinning }: { rotation: number; isSpinning: boo
     return (
         <div style={{
             position: 'absolute', top: '50%', left: '50%',
-            width: 28, height: 80,
+            width: 44, height: 120,
             transformOrigin: 'center center',
             transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-            transition: isSpinning ? `transform ${SPIN_DURATION}ms cubic-bezier(0.25, 0.1, 0.15, 1)` : 'none',
+            transition: isSpinning
+                ? `transform ${SPIN_DURATION}ms cubic-bezier(0.17, 0.67, 0.12, 1)`
+                : 'transform 0.65s cubic-bezier(0.18, 0.89, 0.32, 1.28)',
             pointerEvents: 'none', zIndex: 10,
-            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
+            filter: isSpinning
+                ? 'drop-shadow(0 0 16px rgba(20,184,166,1)) drop-shadow(0 0 40px rgba(20,184,166,0.6))'
+                : 'drop-shadow(0 0 8px rgba(20,184,166,0.5)) drop-shadow(0 8px 18px rgba(0,0,0,0.8))',
         }}>
-            <svg viewBox="0 0 28 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="10" y="0" width="8" height="5" rx="2" fill="#0f766e" />
-                <rect x="9" y="5" width="10" height="14" rx="3" fill="#14b8a6" />
-                <path d="M8 19 Q3 26 3 34 L3 70 Q3 75 8 75 L20 75 Q25 75 25 70 L25 34 Q25 26 20 19 Z" fill="#14b8a6" />
-                <path d="M8 19 Q3 26 3 34 L3 70 Q3 75 8 75 L20 75 Q25 75 25 70 L25 34 Q25 26 20 19 Z" fill="url(#shine)" />
-                <path d="M7 42 L7 68 Q7 73 10 73 L18 73 Q21 73 21 68 L21 42 Z" fill="#0d9488" opacity="0.7" />
-                <path d="M9 30 Q7 42 7 52" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" strokeLinecap="round" />
+            <svg viewBox="0 0 44 120" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
                 <defs>
-                    <linearGradient id="shine" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0" stopColor="rgba(255,255,255,0.08)" />
-                        <stop offset="0.5" stopColor="rgba(255,255,255,0)" />
+                    {/* Glass body — dark emerald green like a real wine bottle */}
+                    <linearGradient id="gBody" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#052e26" />
+                        <stop offset="18%" stopColor="#065f46" />
+                        <stop offset="42%" stopColor="#059669" />
+                        <stop offset="60%" stopColor="#065f46" />
+                        <stop offset="100%" stopColor="#022c22" />
                     </linearGradient>
+
+                    {/* Neck gradient */}
+                    <linearGradient id="gNeck" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#022c22" />
+                        <stop offset="35%" stopColor="#059669" />
+                        <stop offset="65%" stopColor="#047857" />
+                        <stop offset="100%" stopColor="#022c22" />
+                    </linearGradient>
+
+                    {/* Foil/cap — gold metallic */}
+                    <linearGradient id="gFoil" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#78350f" />
+                        <stop offset="20%" stopColor="#d97706" />
+                        <stop offset="50%" stopColor="#fbbf24" />
+                        <stop offset="80%" stopColor="#d97706" />
+                        <stop offset="100%" stopColor="#78350f" />
+                    </linearGradient>
+
+                    {/* Left glass highlight — bright streak */}
+                    <linearGradient id="gHL" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="white" stopOpacity="0.55" />
+                        <stop offset="100%" stopColor="white" stopOpacity="0" />
+                    </linearGradient>
+
+                    {/* Secondary softer highlight */}
+                    <linearGradient id="gHL2" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="white" stopOpacity="0" />
+                        <stop offset="20%" stopColor="white" stopOpacity="0.2" />
+                        <stop offset="100%" stopColor="white" stopOpacity="0" />
+                    </linearGradient>
+
+                    {/* Liquid fill */}
+                    <linearGradient id="gLiq" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#6ee7b7" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#064e3b" stopOpacity="0.85" />
+                    </linearGradient>
+
+                    {/* Label — cream parchment */}
+                    <linearGradient id="gLabel" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#fdf6e3" />
+                        <stop offset="100%" stopColor="#f5e6c8" />
+                    </linearGradient>
+
+                    {/* Spin glow */}
+                    <radialGradient id="gGlow" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.45" />
+                        <stop offset="100%" stopColor="#14b8a6" stopOpacity="0" />
+                    </radialGradient>
+
+                    {/* Clip path for glass body */}
+                    <clipPath id="bottleClip">
+                        <path d="
+                            M19 3 L25 3
+                            L25 8
+                            C25 8 27 10 27 14
+                            L27 22
+                            C27 22 32 28 33 36
+                            L33 100
+                            C33 104 29.5 107 22 107
+                            C14.5 107 11 104 11 100
+                            L11 36
+                            C12 28 17 22 17 22
+                            L17 14
+                            C17 10 19 8 19 8
+                            Z
+                        " />
+                    </clipPath>
                 </defs>
+
+                {/* ── Spin aura glow ── */}
+                {isSpinning && (
+                    <ellipse cx="22" cy="60" rx="22" ry="63" fill="url(#gGlow)" opacity="0.9" />
+                )}
+
+                {/* ── Main bottle shape ── */}
+                {/* Outer glass body path */}
+                <path d="
+                    M19 3 L25 3
+                    L25 8
+                    C25 8 27 10 27 14
+                    L27 22
+                    C27 22 32 28 33 36
+                    L33 100
+                    C33 104 29.5 107 22 107
+                    C14.5 107 11 104 11 100
+                    L11 36
+                    C12 28 17 22 17 22
+                    L17 14
+                    C17 10 19 8 19 8
+                    Z
+                " fill="url(#gBody)" />
+
+                {/* ── Liquid inside (clipped to bottle shape) ── */}
+                <g clipPath="url(#bottleClip)">
+                    <rect x="11" y="52" width="22" height="56" fill="url(#gLiq)" />
+                    {/* Liquid surface meniscus */}
+                    <ellipse cx="22" cy="52" rx="11" ry="3" fill="#6ee7b7" opacity="0.3" />
+
+                    {/* Bubbles */}
+                    <circle cx="15" cy="85" r="1.5" fill="rgba(255,255,255,0.25)" />
+                    <circle cx="25" cy="70" r="1.1" fill="rgba(255,255,255,0.2)" />
+                    <circle cx="18" cy="97" r="1.8" fill="rgba(255,255,255,0.15)" />
+                    <circle cx="28" cy="80" r="0.9" fill="rgba(255,255,255,0.18)" />
+                    <circle cx="13" cy="63" r="1.0" fill="rgba(255,255,255,0.12)" />
+                    <circle cx="30" cy="90" r="0.7" fill="rgba(255,255,255,0.1)" />
+                </g>
+
+                {/* ── Left bright highlight streak ── */}
+                <path d="
+                    M17 14 C17 10 19 8 19 8 L19 3
+                    L20 3 L20 8 C18.5 8.5 18 10 18 14
+                    L18 22 C13 28 12 34 12 36 L12 98
+                    C12 98 12.5 100 13 100 L13 36
+                    C13 34 14 28 19 22 L19 14 Z
+                " fill="url(#gHL)" />
+
+                {/* ── Secondary softer highlight (center-left) ── */}
+                <path d="
+                    M20.5 25 C19 30 18.5 35 18.5 38 L18.5 95
+                    L20 95 L20 38 C20 35 20.5 30 22 25 Z
+                " fill="url(#gHL2)" />
+
+                {/* ── Shoulder sparkle catchlight ── */}
+                <ellipse cx="15" cy="33" rx="2" ry="5" fill="white" opacity="0.22" transform="rotate(-15 15 33)" />
+
+                {/* ── Label area ── */}
+                <rect x="12.5" y="58" width="19" height="26" rx="2.5" fill="url(#gLabel)" opacity="0.92" />
+                {/* Label border */}
+                <rect x="12.5" y="58" width="19" height="26" rx="2.5" fill="none" stroke="#b45309" strokeWidth="0.6" />
+                {/* Decorative line on label */}
+                <line x1="14" y1="63" x2="30" y2="63" stroke="#b45309" strokeWidth="0.4" />
+                <line x1="14" y1="79" x2="30" y2="79" stroke="#b45309" strokeWidth="0.4" />
+                {/* Label text */}
+                <text x="22" y="70" textAnchor="middle" fill="#7c2d12" fontSize="4.2" fontWeight="bold" fontFamily="serif">SPIN</text>
+                <text x="22" y="76" textAnchor="middle" fill="#92400e" fontSize="2.8" fontFamily="serif">THE BOTTLE</text>
+
+                {/* ── Punt (indented base) ── */}
+                <ellipse cx="22" cy="106" rx="6" ry="2" fill="#022c22" opacity="0.8" />
+
+                {/* ── Bottom shadow / thickness ── */}
+                <path d="M11 100 C11 104 14.5 107 22 107 C29.5 107 33 104 33 100 L33 104 C33 108 29 110 22 110 C15 110 11 108 11 104 Z" fill="#011a15" opacity="0.7" />
+
+                {/* ── Foil cap ── */}
+                <rect x="17.5" y="0.5" width="9" height="9" rx="1.5" fill="url(#gFoil)" />
+                {/* Foil collar */}
+                <rect x="17" y="7.5" width="10" height="2.5" rx="1" fill="#b45309" />
+                {/* Foil highlight */}
+                <rect x="18.5" y="1" width="2.5" height="7" rx="1" fill="rgba(255,255,255,0.35)" />
+                {/* Cork dot */}
+                <circle cx="22" cy="2.5" r="1.5" fill="#fef3c7" opacity="0.8" />
+
+                {/* ── Neck ribbing lines ── */}
+                <line x1="17.5" y1="16" x2="17.5" y2="21" stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
+                <line x1="26.5" y1="16" x2="26.5" y2="21" stroke="rgba(0,0,0,0.2)" strokeWidth="0.5" />
             </svg>
         </div>
     );
 }
+
 
 export default function BottleSpinGame() {
     const { players, mySocketId, username, drawerSocketId, bsSpin, bsAnswer, isHost, isDrawer } = useGameStore();

@@ -120,7 +120,7 @@ export interface ServerToClientEvents {
     // Bottle Spin
     'bs:spun': (payload: { rotationOffset: number; targetIndex: number; targetSocketId: string }) => void;
     'bs:prompt_set': (payload: { promptType: 'truth' | 'dare'; promptText: string }) => void;
-    'bs:answered': (payload: { action: 'complete' | 'skip' | 'refuse'; answer: string; targetName: string; pointDelta: number; spinnerName?: string; question?: string; }) => void;
+    'bs:answered': (payload: { action: 'complete' | 'skip' | 'refuse'; answer: string; targetName: string; pointDelta: number; spinnerName?: string; question?: string; players?: Player[] }) => void;
 
     'webrtc:user_joined': (payload: { socketId: string }) => void;
     'webrtc:signal': (payload: { from: string; type: string; data: any }) => void;
