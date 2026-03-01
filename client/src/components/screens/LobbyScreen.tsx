@@ -51,10 +51,38 @@ export default function LobbyScreen() {
     const [showJoinModal, setShowJoinModal] = useState(false);
     const [activeChatUser, setActiveChatUser] = useState<string | null>(null);
     const [showProfile, setShowProfile] = useState(false);
+    const [chatFilter, setChatFilter] = useState<'all' | 'unread' | 'stories' | 'groups'>('all');
+
+    const fetchData = React.useCallback(async () => {
+        const token = localStorage.getItem('token');
+        try {
+            const resRooms = await fetch('/api/rooms', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (resRooms.ok) {
+                const data: RoomListItem[] = await resRooms.json();
+                data.sort((a, b) => b.players.length - a.players.length);
+                setRooms(data);
+            }
+        } catch {
+            console.warn('Could not fetch rooms');
+        }
+
+        try {
+            const resUsers = await fetch('/api/chat/conversations', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (resUsers.ok) {
+                const data = await resUsers.json();
+                setUsers(data);
+            }
+        } catch {
+            console.warn('Could not fetch conversations');
+        }
+    }, [setRooms, setUsers]);
 
     React.useEffect(() => {
         if (playerName && !useGameStore.getState().username) {
-            // Load saved profile if available
             try {
                 const userStr = localStorage.getItem('user');
                 if (userStr) {
@@ -75,56 +103,62 @@ export default function LobbyScreen() {
             setPendingRoomCode(fromLink);
         }
 
-        const fetchData = async () => {
-            const token = localStorage.getItem('token');
-            try {
-                const resRooms = await fetch('/api/rooms', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (resRooms.ok) {
-                    const data: RoomListItem[] = await resRooms.json();
-                    data.sort((a, b) => b.players.length - a.players.length);
-                    setRooms(data);
-                }
-            } catch {
-                console.warn('Could not fetch rooms');
-            }
-
-            try {
-                const resUsers = await fetch('/api/auth/users', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (resUsers.ok) {
-                    const data = await resUsers.json();
-                    const filtered = data.filter((u: any) => u.username !== playerName);
-                    setUsers(filtered);
-                }
-            } catch {
-                console.warn('Could not fetch users');
-            }
-        };
-
         fetchData();
+        // Socket listeners for real-time updates
+        socket.on('system:update', () => {
+            fetchData();
+        });
 
-        // Socket listeners for real-time updates (instead of polling)
-        const onSystemUpdate = (payload: { type: 'rooms' | 'users'; data: any }) => {
-            console.log('📡 Received system update:', payload.type);
-            if (payload.type === 'rooms') {
-                const data: RoomListItem[] = payload.data;
-                data.sort((a, b) => b.players.length - a.players.length);
-                setRooms(data);
-            } else if (payload.type === 'users') {
-                const filtered = payload.data.filter((u: any) => u.username !== playerName);
-                setUsers(filtered);
-            }
-        };
-
-        socket.on('system:update', onSystemUpdate);
+        socket.on('direct_message', () => {
+            fetchData();
+        });
 
         return () => {
-            socket.off('system:update', onSystemUpdate);
+            socket.off('system:update');
+            socket.off('direct_message');
         };
-    }, [playerName]);
+    }, [playerName, setIdentity, fetchData]);
+
+    // Pull-to-refresh state
+    const [refreshing, setRefreshing] = useState(false);
+    const [pullProgress, setPullProgress] = useState(0);
+    const pullThreshold = 80;
+    const startY = React.useRef(0);
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        if (window.scrollY === 0) {
+            startY.current = e.touches[0].pageY;
+        }
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (startY.current > 0) {
+            const pull = e.touches[0].pageY - startY.current;
+            if (pull > 0) {
+                setPullProgress(Math.min(pull, 120));
+            }
+        }
+    };
+
+    const handleTouchEnd = async () => {
+        if (pullProgress >= pullThreshold) {
+            setRefreshing(true);
+            setPullProgress(60);
+
+            // Re-fetch data
+            await fetchData();
+
+            setTimeout(() => {
+                setRefreshing(false);
+                setPullProgress(0);
+                startY.current = 0;
+            }, 800);
+        } else {
+            setPullProgress(0);
+            startY.current = 0;
+        }
+    };
+
 
     // -- Mobile Back Navigation Handling --
     React.useEffect(() => {
@@ -278,8 +312,48 @@ export default function LobbyScreen() {
         };
     };
 
+    const timeAgo = (date: any) => {
+        if (!date) return '';
+        const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
+        if (seconds < 60) return 'just now';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return minutes + 'm';
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return hours + 'h';
+        const days = Math.floor(hours / 24);
+        return days + 'd';
+    };
+
     return (
-        <div className="snap-screen snap-light">
+        <div
+            className="snap-screen snap-light"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+        >
+            {/* Pull to refresh UI */}
+            <div style={{
+                height: pullProgress,
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'flex-end',
+                justifyContent: 'center',
+                transition: refreshing ? 'height 0.3s' : 'none',
+                background: '#FFFC00',
+                position: 'relative',
+                borderBottomLeftRadius: '25px',
+                borderBottomRightRadius: '25px'
+            }}>
+                <div style={{
+                    fontSize: '2.8rem',
+                    transform: `translateY(${Math.max(0, 40 - pullProgress * 0.5)}px) rotate(${pullProgress * 2}deg)`,
+                    marginBottom: '5px',
+                    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+                }}>
+                    👻
+                </div>
+            </div>
+
             {/* SNAP HEADER */}
             <div className="snap-header-light">
                 <div className="snap-header-left">
@@ -330,36 +404,98 @@ export default function LobbyScreen() {
                 {activeTab === 'chat' && (
                     <>
                         {/* Chat Category Pills */}
-                        <div className="snap-pills-container" style={{ display: 'flex', gap: '24px', padding: '12px 16px 16px 16px', overflowX: 'auto', alignItems: 'center' }}>
-                            <div className="snap-pill" style={{ background: '#e6f4fc', color: '#0164a3', padding: '10px 22px', borderRadius: '24px', fontSize: '1rem', fontWeight: 700, cursor: 'pointer' }}>All</div>
-                            <div className="snap-pill" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem', fontWeight: 700, color: '#666', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                Unread <span style={{ background: '#0e172a', color: '#fff', fontSize: '0.8rem', padding: '2px 8px', borderRadius: '12px', fontWeight: 800 }}>5</span>
+                        <div className="snap-pills-container" style={{ display: 'flex', gap: '20px', padding: '12px 16px 16px 16px', overflowX: 'auto', alignItems: 'center' }}>
+                            <div
+                                className="snap-pill"
+                                onClick={() => setChatFilter('all')}
+                                style={{
+                                    background: chatFilter === 'all' ? '#e6f4fc' : 'transparent',
+                                    color: chatFilter === 'all' ? '#0164a3' : '#666',
+                                    padding: '8px 18px', borderRadius: '24px', fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer'
+                                }}
+                            >
+                                All
                             </div>
-                            <div className="snap-pill" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem', fontWeight: 700, color: '#666', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                Stories <span style={{ background: '#0e172a', color: '#fff', fontSize: '0.8rem', padding: '2px 8px', borderRadius: '12px', fontWeight: 800 }}>9+</span>
+                            <div
+                                className="snap-pill"
+                                onClick={() => setChatFilter('unread')}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.95rem', fontWeight: 700,
+                                    color: chatFilter === 'unread' ? '#0164a3' : '#666',
+                                    background: chatFilter === 'unread' ? '#e6f4fc' : 'transparent',
+                                    padding: '8px 18px', borderRadius: '24px', cursor: 'pointer', whiteSpace: 'nowrap'
+                                }}
+                            >
+                                Unread {users.filter(u => u.unreadCount > 0).length > 0 && (
+                                    <span style={{ background: '#0e172a', color: '#fff', fontSize: '0.75rem', padding: '1px 6px', borderRadius: '10px', fontWeight: 800 }}>
+                                        {users.filter(u => u.unreadCount > 0).length}
+                                    </span>
+                                )}
                             </div>
-                            <div className="snap-pill" style={{ fontSize: '1rem', fontWeight: 700, color: '#666', cursor: 'pointer' }}>Groups</div>
-                            <div className="snap-pill" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '1rem', fontWeight: 700, color: '#666', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                <span style={{ fontSize: '1.2rem' }}>👽</span> My AI
+                            <div
+                                className="snap-pill"
+                                onClick={() => setChatFilter('stories')}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.95rem', fontWeight: 700,
+                                    color: chatFilter === 'stories' ? '#0164a3' : '#666',
+                                    background: chatFilter === 'stories' ? '#e6f4fc' : 'transparent',
+                                    padding: '8px 18px', borderRadius: '24px', cursor: 'pointer', whiteSpace: 'nowrap'
+                                }}
+                            >
+                                Stories <span style={{ background: '#0e172a', color: '#fff', fontSize: '0.75rem', padding: '1px 6px', borderRadius: '10px', fontWeight: 800 }}>0</span>
+                            </div>
+                            <div
+                                className="snap-pill"
+                                onClick={() => setChatFilter('groups')}
+                                style={{
+                                    fontSize: '0.95rem', fontWeight: 700,
+                                    color: chatFilter === 'groups' ? '#0164a3' : '#666',
+                                    background: chatFilter === 'groups' ? '#e6f4fc' : 'transparent',
+                                    padding: '8px 18px', borderRadius: '24px', cursor: 'pointer'
+                                }}
+                            >
+                                Groups
                             </div>
                         </div>
 
-                        {users.length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '40px', color: '#999', fontWeight: 600 }}>No friends yet!</div>
-                        ) : users.map((u, i) => {
-                            const streak = getStreak(u.username);
-                            const statuses = [
-                                { text: 'New Snap', color: '#ef4444', icon: '🟥' },
-                                { text: 'Delivered', color: '#3b82f6', icon: '➤' },
-                                { text: 'Received', color: '#8b5cf6', icon: '🔲' },
-                                { text: 'Opened', color: '#10b981', icon: '▻' },
-                                { text: 'Chat from ' + (u.displayName || u.username), color: '#0ea5e9', icon: '💬' }
-                            ];
-                            const status = statuses[i % statuses.length];
+                        {users.filter(u => {
+                            if (chatFilter === 'unread') return u.unreadCount > 0;
+                            if (chatFilter === 'stories') return false; // Mock
+                            if (chatFilter === 'groups') return false; // Mock
+                            return true;
+                        }).length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '40px', color: '#999', fontWeight: 600 }}>Nothing to show here!</div>
+                        ) : users.filter(u => {
+                            if (chatFilter === 'unread') return u.unreadCount > 0;
+                            if (chatFilter === 'stories') return false;
+                            if (chatFilter === 'groups') return false;
+                            return true;
+                        }).map((u, i) => {
+                            let statusText = 'Say hi!';
+                            let statusColor = '#999';
+                            let statusIcon = '💬';
 
-                            // Mock time logic
-                            const times = ['just now', '1m', '4m', '30m', '2h', '8h'];
-                            const time = times[i % times.length];
+                            if (u.lastMessage) {
+                                const m = u.lastMessage;
+                                if (m.isMine) {
+                                    statusText = m.status === 'opened' ? 'Opened' : 'Delivered';
+                                    const baseIcon = m.type === 'image' ? (m.status === 'opened' ? '▻' : '➤') :
+                                        m.type === 'video' ? (m.status === 'opened' ? '▻' : '➤') :
+                                            (m.status === 'opened' ? '◅' : '➤');
+                                    statusIcon = baseIcon;
+                                    statusColor = m.type === 'image' ? '#ef4444' : m.type === 'video' ? '#8b5cf6' : '#3b82f6';
+                                } else {
+                                    if (m.status === 'delivered') {
+                                        statusText = m.type === 'image' ? 'New Snap' : m.type === 'video' ? 'New Snap' : 'New Chat';
+                                        statusIcon = m.type === 'image' ? '🟥' : m.type === 'video' ? '🟪' : '🟦';
+                                        statusColor = m.type === 'image' ? '#ef4444' : m.type === 'video' ? '#8b5cf6' : '#0ea5e9';
+                                    } else {
+                                        statusText = 'Received';
+                                        statusIcon = m.type === 'image' ? '🔲' : m.type === 'video' ? '🔲' : '💬';
+                                        statusColor = '#8b5cf6';
+                                    }
+                                }
+                            }
 
                             return (
                                 <div key={u.id} className="snap-row-light" onClick={() => openChat(u.username)}>
@@ -372,20 +508,28 @@ export default function LobbyScreen() {
                                             <span className="snap-room-name-light">{u.displayName || u.username}</span>
                                         </div>
                                         <div className="snap-row-bottom-light">
-                                            <span style={{ color: status.color, marginRight: 4 }}>{status.icon}</span>
-                                            <span style={{ color: status.text.includes('New') ? status.color : '#999' }}>{status.text}</span>
+                                            <span style={{ color: statusColor, marginRight: 4, fontSize: '0.8rem' }}>{statusIcon}</span>
+                                            <span style={{ color: (u.lastMessage && !u.lastMessage.isMine && u.lastMessage.status === 'delivered') ? statusColor : '#999', fontWeight: (u.lastMessage && !u.lastMessage.isMine && u.lastMessage.status === 'delivered') ? 800 : 400 }}>
+                                                {statusText}
+                                            </span>
                                             <span className="snap-dot">•</span>
-                                            <span>{time}</span>
+                                            <span>{timeAgo(u.lastMessage?.createdAt || u.lastLoginAt)}</span>
                                             <span className="snap-dot">•</span>
-                                            <span style={{ fontWeight: 'bold', color: '#000' }}>{streak.num} {streak.emoji}</span>
+                                            <span style={{ fontWeight: 800, color: '#000' }}>{u.score || 0} 🔥</span>
                                         </div>
                                     </div>
 
-                                    <div className="snap-row-right-light">
-                                        <svg className="snap-trailing-camera" width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                                            <circle cx="12" cy="13" r="4"></circle>
-                                        </svg>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', color: '#ccc' }}>
+                                        {u.lastMessage?.type === 'image' || u.lastMessage?.type === 'video' ? (
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ccc' }}>
+                                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                                <circle cx="12" cy="13" r="4"></circle>
+                                            </svg>
+                                        ) : (
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ccc' }}>
+                                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                            </svg>
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -547,7 +691,12 @@ export default function LobbyScreen() {
             )}
 
             {activeChatUser && (
-                <SnapChatView recipient={activeChatUser} onBack={goBack} />
+                <SnapChatView
+                    recipient={activeChatUser}
+                    recipientDisplayName={users.find(u => u.username === activeChatUser)?.displayName}
+                    recipientAvatar={users.find(u => u.username === activeChatUser)?.avatar}
+                    onBack={goBack}
+                />
             )}
 
             {showProfile && (

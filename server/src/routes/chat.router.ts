@@ -37,6 +37,101 @@ const userCache = new Map<string, { id: string, username: string }>();
 const historyCache = new Map<string, { data: any, timestamp: number }>();
 const CACHE_TTL = 10000; // 10 seconds for history
 
+// Get list of conversations for the current user
+router.get('/conversations', async (req: AuthRequest, res) => {
+    try {
+        const myId = req.user?.id;
+        const myName = req.user?.username;
+        if (!myId) return res.status(401).json({ error: 'Unauthorized' });
+
+        const p = prisma as any;
+
+        // Fetch all users except self
+        const users = await p.user.findMany({
+            where: { NOT: { id: myId } },
+            select: {
+                id: true,
+                username: true,
+                displayName: true,
+                avatar: true,
+                score: true,
+                lastLoginAt: true
+            }
+        });
+
+        // For each user, get the last message and unread count
+        const conversations = await Promise.all(users.map(async (u: any) => {
+            const lastMsg = await p.directMessage.findFirst({
+                where: {
+                    OR: [
+                        { senderId: myId, receiverId: u.id },
+                        { senderId: u.id, receiverId: myId }
+                    ]
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+
+            const unreadCount = await p.directMessage.count({
+                where: {
+                    senderId: u.id,
+                    receiverId: myId,
+                    status: 'delivered'
+                }
+            });
+
+            return {
+                ...u,
+                lastMessage: lastMsg ? {
+                    type: lastMsg.type,
+                    status: lastMsg.status,
+                    createdAt: lastMsg.createdAt,
+                    isMine: lastMsg.senderId === myId,
+                    content: lastMsg.content
+                } : null,
+                unreadCount
+            };
+        }));
+
+        // Sort by last message date
+        conversations.sort((a, b) => {
+            const dateA = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
+            const dateB = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
+            return dateB - dateA;
+        });
+
+        res.json(conversations);
+    } catch (e) {
+        console.error('Conversations error:', e);
+        res.status(500).json({ error: 'Failed to fetch conversations' });
+    }
+});
+
+// Mark messages as read (opened)
+router.post('/mark-read', async (req: AuthRequest, res) => {
+    try {
+        const { sender } = req.body;
+        const myId = req.user?.id;
+        if (!myId || !sender) return res.status(400).json({ error: 'Missing fields' });
+
+        const p = prisma as any;
+        const otherUser = await p.user.findUnique({ where: { username: sender } });
+        if (!otherUser) return res.status(404).json({ error: 'User not found' });
+
+        await p.directMessage.updateMany({
+            where: {
+                senderId: otherUser.id,
+                receiverId: myId,
+                status: 'delivered'
+            },
+            data: { status: 'opened' }
+        });
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to mark as read' });
+    }
+});
+
 function formatMessageResponse(m: any, u1_id: string, u1_name: string, u2_name: string) {
     let text = m.content;
     let type = m.type;
@@ -54,6 +149,7 @@ function formatMessageResponse(m: any, u1_id: string, u1_name: string, u2_name: 
         id: m.id,
         text,
         type: type,
+        status: m.status,
         voiceDuration: m.voiceDuration,
         sender: m.senderId === u1_id ? u1_name : u2_name,
         createdAt: m.createdAt
@@ -129,6 +225,7 @@ router.get('/history', async (req: AuthRequest, res) => {
                 id: true,
                 content: true,
                 type: true,
+                status: true,
                 voiceDuration: true,
                 senderId: true,
                 createdAt: true
@@ -210,8 +307,15 @@ router.post('/send', async (req: AuthRequest, res) => {
                 receiverId: u2.id,
                 content: finalContent,
                 type: type || 'text',
-                voiceDuration: voiceDuration || null
+                voiceDuration: voiceDuration || null,
+                status: 'delivered'
             }
+        });
+
+        // Award score point for sending message
+        await p.user.update({
+            where: { id: u1.id },
+            data: { score: { increment: 1 } }
         });
 
         const formattedMsg = formatMessageResponse(message, u1.id, sender, receiver);

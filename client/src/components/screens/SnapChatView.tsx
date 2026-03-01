@@ -4,6 +4,8 @@ import { useGameStore } from '../../store/game.store';
 
 interface SnapChatViewProps {
     recipient: string;
+    recipientDisplayName?: string;
+    recipientAvatar?: string;
     onBack: () => void;
 }
 
@@ -17,7 +19,7 @@ interface ChatMessage {
     createdAt: string;
 }
 
-export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
+export default function SnapChatView({ recipient, recipientDisplayName, recipientAvatar, onBack }: SnapChatViewProps) {
     const [msgText, setMsgText] = useState('');
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [hasMore, setHasMore] = useState(true);
@@ -112,6 +114,14 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
         // Initial Fetch (most recent 30)
         if (currentUser && recipient) {
             const token = localStorage.getItem('token');
+
+            // Mark as read when opening
+            fetch('/api/chat/mark-read', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ sender: recipient })
+            }).catch(() => { });
+
             fetch(`/api/chat/history?user1=${encodeURIComponent(currentUser)}&user2=${encodeURIComponent(recipient)}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
@@ -879,22 +889,25 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
         <div className="snap-chat-view">
             <div className="snap-chat-header">
                 <div className="snap-chat-header-left" onClick={onBack}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}>
                         <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
-                    <div className="snap-chat-header-avatar">
-                        <img src={`https://api.dicebear.com/7.x/open-peeps/svg?seed=${recipient}&backgroundColor=transparent`} alt="avatar" />
+                    <div className="snap-chat-header-avatar" style={{ margin: '0 8px' }}>
+                        <img src={recipientAvatar?.startsWith('http') || recipientAvatar?.startsWith('data:') ? recipientAvatar : `https://api.dicebear.com/7.x/open-peeps/svg?seed=${recipientAvatar || recipient}&backgroundColor=transparent`} alt="avatar" />
                     </div>
-                    <h2>{recipient}</h2>
+                    <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
+                        <h2 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0 }}>{recipientDisplayName || recipient}</h2>
+                        <span style={{ fontSize: '0.75rem', color: '#999', fontWeight: 600 }}>{recipient}</span>
+                    </div>
                 </div>
-                <div className="snap-chat-header-right">
-                    <button className="snap-chat-icon-btn" onClick={() => initiateCall('audio')}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <div className="snap-chat-header-right" style={{ gap: '10px' }}>
+                    <button className="snap-chat-icon-btn-circle" onClick={() => initiateCall('audio')}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
                         </svg>
                     </button>
-                    <button className="snap-chat-icon-btn" onClick={() => initiateCall('video')}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <button className="snap-chat-icon-btn-circle" onClick={() => initiateCall('video')}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <polygon points="23 7 16 12 23 17 23 7"></polygon>
                             <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
                         </svg>

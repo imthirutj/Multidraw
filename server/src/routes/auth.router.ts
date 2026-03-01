@@ -22,7 +22,11 @@ router.post('/login', async (req, res) => {
         }
 
         const p = prisma as any;
-        const user = await p.user.findUnique({ where: { username } });
+        const user = await p.user.findFirst({
+            where: {
+                username: { equals: username, mode: 'insensitive' }
+            }
+        });
 
         if (!user) {
             return res.status(401).json({ error: 'User does not exist' });
@@ -98,7 +102,8 @@ router.post('/signup', async (req, res) => {
         }
 
         const p = prisma as any;
-        const existing = await p.user.findUnique({ where: { username } });
+        const normalizedUsername = username.toLowerCase();
+        const existing = await p.user.findUnique({ where: { username: normalizedUsername } });
         if (existing) {
             return res.status(400).json({ error: 'Username already taken' });
         }
@@ -106,7 +111,7 @@ router.post('/signup', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await p.user.create({
             data: {
-                username,
+                username: normalizedUsername,
                 password: hashedPassword,
                 firstName,
                 lastName,
@@ -168,9 +173,12 @@ router.patch('/profile', async (req, res) => {
         if (!id) return res.status(400).json({ error: 'User ID required' });
 
         const p = prisma as any;
+        const data: any = { bio, avatar, displayName };
+        if (username) data.username = username.toLowerCase();
+
         const updated = await p.user.update({
             where: { id },
-            data: { username, bio, avatar, displayName }
+            data
         });
 
         const io = req.app.get('io');

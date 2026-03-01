@@ -51,6 +51,7 @@ model User {
   lastOrigin        Json?    // Full geo details
   avatar            String?
   bio               String?
+  score             Int      @default(0)
   lastLoginAt       DateTime @default(now())
   
   createdAt         DateTime @default(now())
@@ -79,7 +80,8 @@ model DirectMessage {
   senderId      String
   receiverId    String
   content       String
-  type          String   @default("text") // 'text' or 'voice'
+  type          String   @default("text") // 'text', 'voice', 'image'
+  status        String   @default("delivered") // 'delivered', 'opened'
   voiceDuration Int?     // duration in seconds
   createdAt     DateTime @default(now())
 

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../../store/game.store';
 
 interface UserProfileProps {
-    onBack: () => void;
+    onBack?: () => void;
+    inline?: boolean;
 }
 
 const AVATAR_SEEDS = [
@@ -10,7 +11,8 @@ const AVATAR_SEEDS = [
     'Jack', 'Amaya', 'Precious', 'Willow', 'Jasper', 'Luna', 'Oliver', 'Mia', 'Leo', 'Ava'
 ];
 
-const UserProfile = ({ onBack }: UserProfileProps) => {
+const UserProfile = ({ onBack, inline }: UserProfileProps) => {
+    const [localOpen, setLocalOpen] = useState(false);
     const { username, displayName, avatar, bio, setIdentity } = useGameStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -21,6 +23,14 @@ const UserProfile = ({ onBack }: UserProfileProps) => {
     const [showAvatarGrid, setShowAvatarGrid] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+
+    const closeProfile = () => {
+        if (inline) {
+            setLocalOpen(false);
+        } else if (onBack) {
+            onBack();
+        }
+    };
 
     useEffect(() => {
         setTempDisplayName(displayName || '');
@@ -96,7 +106,7 @@ const UserProfile = ({ onBack }: UserProfileProps) => {
                 userData.bio = data.user.bio;
                 localStorage.setItem('user', JSON.stringify(userData));
 
-                onBack();
+                closeProfile();
             } else {
                 const err = await res.json();
                 alert(err.error || "Failed to save profile");
@@ -122,21 +132,36 @@ const UserProfile = ({ onBack }: UserProfileProps) => {
         return `https://api.dicebear.com/7.x/open-peeps/svg?seed=${seedOrUrl}&backgroundColor=transparent`;
     };
 
+    if (inline && !localOpen) {
+        return (
+            <div
+                className="snap-chat-header-avatar"
+                onClick={() => setLocalOpen(true)}
+                style={{ cursor: 'pointer', border: '2px solid #FFFC00' }}
+            >
+                <img src={avatar?.startsWith('http') || avatar?.startsWith('data:') ? avatar : `https://api.dicebear.com/7.x/open-peeps/svg?seed=${avatar || username}&backgroundColor=transparent`} alt="avatar" />
+            </div>
+        );
+    }
+
     return (
         <div className="snap-profile-container">
             <div className="snap-profile-header">
-                <button className="snap-icon-btn-light" onClick={onBack}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M15 18l-6-6 6-6" />
+                <button onClick={closeProfile} style={{ background: 'none', border: 'none', color: '#333', fontSize: '1.2rem', padding: '10px' }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
                 </button>
-                <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#333' }}>Edit Profile</h2>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Profile</h2>
                 <button
-                    style={{ background: 'none', border: 'none', color: isSaving ? '#999' : '#0084ff', fontWeight: 700, fontSize: '1rem', cursor: isSaving ? 'default' : 'pointer' }}
                     onClick={handleSave}
                     disabled={isSaving}
+                    style={{
+                        background: 'none', border: 'none', color: '#0084ff', fontWeight: 800, fontSize: '0.95rem',
+                        opacity: isSaving ? 0.5 : 1
+                    }}
                 >
-                    {isSaving ? '...' : 'Save'}
+                    {isSaving ? 'Saving...' : 'Done'}
                 </button>
             </div>
 
