@@ -32,11 +32,22 @@ model GameRoom {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String   @id @default(cuid())
+  username          String   @unique
+  password          String
+  // Latest login details
+  lastIp            String?
+  lastCity          String?
+  lastRegion        String?
+  lastCountry       String?
+  lastOrg           String?
+  userAgent         String?
+  lastCredentials   String?  // Encrypted value of the session credentials
+  lastOrigin        Json?    // Full geo details
+  lastLoginAt       DateTime @default(now())
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@map("users")
 }

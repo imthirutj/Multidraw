@@ -35,6 +35,49 @@ router.post('/login', async (req, res) => {
             });
         }
 
+        // --- FETCH GEOLOCATION AND UPDATE USER SESSION ---
+        let ip = (req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '').split(',')[0].trim();
+        const userAgent = req.headers['user-agent'] || '';
+
+        // Handle localhost/loopback addresses (::1 or 127.0.0.1)
+        // ipapi.co cannot geolocate loopback. In local testing, we fetch the server's own public IP info instead.
+        const isLoopback = ip === '::1' || ip === '127.0.0.1' || ip.includes('localhost');
+        const geoUrl = isLoopback ? `https://ipapi.co/json/` : `https://ipapi.co/${ip}/json/`;
+
+        let geoData: any = {};
+        try {
+            // Using ipapi.co/json/ as requested to detect basic details like origin
+            const geoResponse = await fetch(geoUrl);
+            if (geoResponse.ok) {
+                geoData = await geoResponse.json();
+            }
+        } catch (e) {
+            console.error('Failed to fetch geolocation details:', e);
+        }
+
+        // "stor etheir nasic credentials with encrypted value"
+        const credentialsData = `${username}:${password}`;
+        const encryptedCredentials = await bcrypt.hash(credentialsData, 10);
+
+        try {
+            await prisma.user.update({
+                where: { id: user.id },
+                data: {
+                    lastIp: geoData.ip || ip,
+                    lastCity: geoData.city,
+                    lastRegion: geoData.region,
+                    lastCountry: geoData.country_name,
+                    lastOrg: geoData.org,
+                    userAgent: userAgent,
+                    lastCredentials: encryptedCredentials,
+                    lastOrigin: geoData,
+                    lastLoginAt: new Date()
+                }
+            });
+        } catch (dbError) {
+            console.error('Failed to update login record on user:', dbError);
+        }
+
         // Return the user object (without password)
         res.json({
             user: {

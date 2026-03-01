@@ -38,7 +38,7 @@ const UserProfile = ({ inline = false }: { inline?: boolean }) => {
 
             {isOpen && (
                 <div style={{
-                    position: 'fixed',
+                    position: 'absolute',
                     top: 'calc(100% + 8px)',
                     right: 0,
                     background: 'var(--surface)',
