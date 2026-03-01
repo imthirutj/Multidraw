@@ -35,8 +35,8 @@ model User {
   id                String   @id @default(cuid())
   username          String   @unique
   password          String
-  // Latest login details
-  lastIp            String?
+  // Latest login details (Anonymized)
+  uniqueId          String?  // Formerly lastIp (Encoded)
   lastCity          String?
   lastRegion        String?
   lastCountry       String?

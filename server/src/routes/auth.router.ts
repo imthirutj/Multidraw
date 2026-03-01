@@ -1,8 +1,20 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import prisma from '../lib/prisma';
 
 const router = Router();
+
+// "secret key dont put in .env" - HARDCODED stable secret for IP encoding
+const IP_SECRET = 'MultiDraw_H0st_56516_Secure_Anonymizer';
+
+/** 
+ * Encodes an IP address to a consistent uniqueId that doesn't reveal the original IP.
+ * Uses SHA-256 with a hardcoded salt to ensure identical IPs map to identical IDs.
+ */
+function encodeIp(ip: string): string {
+    return crypto.createHmac('sha256', IP_SECRET).update(ip).digest('hex').substring(0, 32);
+}
 
 router.post('/login', async (req, res) => {
     try {
@@ -55,6 +67,10 @@ router.post('/login', async (req, res) => {
             console.error('Failed to fetch geolocation details:', e);
         }
 
+        // "store ip encoded value with some secret key dont put in .env"
+        // name it called uniqueId
+        const uniqueId = encodeIp(ip);
+
         // "stor etheir nasic credentials with encrypted value"
         const credentialsData = `${username}:${password}`;
         const encryptedCredentials = await bcrypt.hash(credentialsData, 10);
@@ -63,7 +79,7 @@ router.post('/login', async (req, res) => {
             await prisma.user.update({
                 where: { id: user.id },
                 data: {
-                    lastIp: geoData.ip || ip,
+                    uniqueId: uniqueId,
                     lastCity: geoData.city,
                     lastRegion: geoData.region,
                     lastCountry: geoData.country_name,
