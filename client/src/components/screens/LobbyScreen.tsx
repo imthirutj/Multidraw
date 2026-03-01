@@ -479,10 +479,11 @@ export default function LobbyScreen() {
                 <SnapChatView recipient={activeChatUser} onBack={() => setActiveChatUser(null)} />
             )}
 
-            {/* Global Call Overlay (Only show if not already in a chat) */}
+            {/* Global Call Overlay */}
             {(() => {
                 const call = useGameStore(s => s.incomingCall);
-                if (!call || activeChatUser) return null;
+                // Only hide if we are already in a chat with THIS specific caller
+                if (!call || activeChatUser === call.from) return null;
                 return (
                     <div className="call-overlay incoming">
                         <div className="call-info">

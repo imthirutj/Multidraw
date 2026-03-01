@@ -60,6 +60,29 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const remoteVideoRef = useRef<HTMLVideoElement>(null);
 
+    // Call duration timer
+    const [callDuration, setCallDuration] = useState(0);
+    const [isMuted, setIsMuted] = useState(false);
+    const [isVideoOff, setIsVideoOff] = useState(false);
+    const [isCallConnected, setIsCallConnected] = useState(false);
+
+    useEffect(() => {
+        let interval: any;
+        if (callActive && isCallConnected) {
+            interval = setInterval(() => setCallDuration(d => d + 1), 1000);
+        } else {
+            setCallDuration(0);
+        }
+        return () => clearInterval(interval);
+    }, [callActive, isCallConnected]);
+
+    const formatDuration = (s: number) => {
+        const hrs = Math.floor(s / 3600);
+        const mins = Math.floor((s % 3600) / 60);
+        const secs = s % 60;
+        return `${hrs > 0 ? hrs + ':' : ''}${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    };
+
     const filters = [
         { name: 'none', label: 'Original' },
         { name: 'grayscale(1)', label: 'Noir' },
@@ -120,6 +143,13 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
             }
         };
 
+        // Auto-accept call if we just entered this chat by clicking "Join" in the Lobby
+        const currentIncoming = useGameStore.getState().incomingCall;
+        if (currentIncoming && currentIncoming.from === recipient && !callActive) {
+            console.log("🚀 Auto-accepting call from Lobby 'Join' click");
+            handleAcceptCall();
+        }
+
         socket.on('direct_message', handleNewMessage);
 
         // Call Listeners
@@ -127,9 +157,11 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
 
 
         socket.on('call:accepted', async ({ answer }) => {
+            console.log("☎️ Call accepted by peer, setting remote description");
             if (peerConnection.current) {
                 await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
                 setCallActive(true);
+                setIsCallConnected(true);
             }
         });
 
@@ -358,11 +390,7 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
         };
     }, []);
 
-    const formatDuration = (s: number) => {
-        const m = Math.floor(s / 60);
-        const sec = s % 60;
-        return `${m}:${sec.toString().padStart(2, '0')}`;
-    };
+
 
     const handleSend = async () => {
         if (!msgText.trim()) return;
@@ -586,7 +614,7 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
         }
     };
 
-    const switchCameraFacing = async () => {
+    const flipCamera = async () => {
         const newFacing = cameraFacing === 'user' ? 'environment' : 'user';
         setCameraFacing(newFacing);
         if (videoRef.current?.srcObject) {
@@ -680,6 +708,7 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
         };
 
         pc.ontrack = (event) => {
+            console.log("🎥 Received remote track, streams:", event.streams);
             setRemoteStream(event.streams[0]);
         };
 
@@ -725,6 +754,7 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
             socket.emit('call:response', { to: incomingCall.from, answer, accepted: true });
             setIncomingCall(null);
             setCallActive(true);
+            setIsCallConnected(true);
         } catch (err) {
             console.error("Accept failed:", err);
             cleanupCall();
@@ -749,6 +779,7 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
         }
         setRemoteStream(null);
         setCallActive(false);
+        setIsCallConnected(false);
         setIncomingCall(null);
     };
 
@@ -757,18 +788,35 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
         cleanupCall();
     };
 
+    const toggleMute = () => {
+        if (localStream) {
+            localStream.getAudioTracks().forEach(t => t.enabled = !t.enabled);
+            setIsMuted(!isMuted);
+        }
+    };
+
+    const toggleVideo = () => {
+        if (localStream) {
+            localStream.getVideoTracks().forEach(t => t.enabled = !t.enabled);
+            setIsVideoOff(!isVideoOff);
+        }
+    };
+
+
     // Auto-attach streams to video elements
     useEffect(() => {
         if (localVideoRef.current && localStream) {
+            console.log("✅ Attaching local stream to video element");
             localVideoRef.current.srcObject = localStream;
         }
-    }, [localStream]);
+    }, [localStream, callActive, isVideoOff]);
 
     useEffect(() => {
         if (remoteVideoRef.current && remoteStream) {
+            console.log("✅ Attaching remote stream to video element");
             remoteVideoRef.current.srcObject = remoteStream;
         }
-    }, [remoteStream]);
+    }, [remoteStream, callActive, isVideoOff]);
 
     return (
         <div className="snap-chat-view">
@@ -913,7 +961,7 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
                         </div>
 
                         <div className="camera-controls-top">
-                            <button className="camera-top-btn" onClick={switchCameraFacing}>
+                            <button className="camera-top-btn" onClick={flipCamera}>
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M23 4v6h-6"></path>
                                     <path d="M1 20v-6h6"></path>
@@ -1137,22 +1185,85 @@ export default function SnapChatView({ recipient, onBack }: SnapChatViewProps) {
             )}
 
             {callActive && (
-                <div className="call-overlay active-call">
-                    {callType === 'video' && (
-                        <>
-                            <video ref={remoteVideoRef} autoPlay playsInline className="remote-video" />
-                            <video ref={localVideoRef} autoPlay playsInline muted className="local-video-pip" />
-                        </>
-                    )}
-                    {callType === 'audio' && (
-                        <div className="audio-call-info">
-                            <img className="call-avatar" src={`https://api.dicebear.com/7.x/open-peeps/svg?seed=${recipient}&backgroundColor=transparent`} alt="avatar" />
-                            <h3>{recipient}</h3>
-                            <p>On {callType} call</p>
+                <div className="call-overlay active-call premium-call">
+                    {/* TOP HEADER */}
+                    <div className="call-header-premium">
+                        <div className="call-header-left">
+                            <img className="call-header-avatar" src={`https://api.dicebear.com/7.x/open-peeps/svg?seed=${recipient}&backgroundColor=transparent`} alt="av" />
+                            <div className="call-header-info">
+                                <div className="call-header-name">💍❤️ {recipient}</div>
+                                <div className="call-header-status">
+                                    {isCallConnected ? formatDuration(callDuration) : 'Ringing...'}
+                                </div>
+                            </div>
                         </div>
-                    )}
-                    <div className="call-actions-bottom">
-                        <button className="call-btn end-call" onClick={endCall}>
+                        <div className="call-header-right">
+                            <button className="call-header-btn">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M15 3h6v6"></path>
+                                    <path d="M9 21H3v-6"></path>
+                                    <path d="M21 3l-7 7"></path>
+                                    <path d="M3 21l7-7"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* MAIN AREA */}
+                    <div className="call-main-area">
+                        {callType === 'video' && !isVideoOff ? (
+                            <video ref={remoteVideoRef} autoPlay playsInline className="remote-video-full" />
+                        ) : (
+                            <div className="remote-avatar-container">
+                                <img className="remote-avatar-large" src={`https://api.dicebear.com/7.x/open-peeps/svg?seed=${recipient}&backgroundColor=transparent`} alt="remote" />
+                            </div>
+                        )}
+
+                        {/* PIP LOCAL PREVIEW */}
+                        <div className="local-pip-premium">
+                            {callType === 'video' && !isVideoOff ? (
+                                <video ref={localVideoRef} autoPlay playsInline muted className="local-video-pip-content" />
+                            ) : (
+                                <img src={`https://api.dicebear.com/7.x/open-peeps/svg?seed=${currentUser}&backgroundColor=transparent`} alt="me" />
+                            )}
+                        </div>
+                    </div>
+
+                    {/* BOTTOM CONTROLS */}
+                    <div className="call-controls-premium">
+                        <button className={`call-control-btn ${isVideoOff ? 'off' : ''}`} onClick={toggleVideo}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                                {isVideoOff && <line x1="1" y1="1" x2="23" y2="23"></line>}
+                            </svg>
+                        </button>
+                        <button className="call-control-btn" onClick={() => {
+                            if (callType === 'video') flipCamera();
+                        }}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M23 4v6h-6"></path>
+                                <path d="M1 20v-6h6"></path>
+                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                            </svg>
+                        </button>
+                        <button className={`call-control-btn ${isMuted ? 'off' : ''}`} onClick={toggleMute}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                <line x1="12" y1="19" x2="12" y2="23"></line>
+                                <line x1="8" y1="23" x2="16" y2="23"></line>
+                                {isMuted && <line x1="1" y1="1" x2="23" y2="23"></line>}
+                            </svg>
+                        </button>
+                        <button className="call-control-btn">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                            </svg>
+                        </button>
+                        <button className="call-control-btn end" onClick={endCall}>
                             <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" transform="rotate(135 12 12)" />
                             </svg>
