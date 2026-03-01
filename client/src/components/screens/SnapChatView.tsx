@@ -825,6 +825,7 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
 
     const initiateCall = async (type: 'audio' | 'video') => {
         setCallType(type);
+        if (type === 'video') setIsVideoOff(false);
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: type === 'video',
@@ -844,10 +845,17 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
         }
     };
 
+    const isAcceptingRef = useRef(false);
     const handleAcceptCall = async () => {
-        if (!incomingCall) return;
+        if (!incomingCall || isAcceptingRef.current) return;
+        isAcceptingRef.current = true;
+
+        // Ensure no existing peer connections are active before accepting!
+        cleanupCall();
+
         const type = incomingCall.type;
         setCallType(type);
+        if (type === 'video') setIsVideoOff(false);
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: type === 'video',
@@ -873,7 +881,10 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
             setIsCallConnected(true);
         } catch (err) {
             console.error("Accept failed:", err);
+            isAcceptingRef.current = false;
             cleanupCall();
+        } finally {
+            isAcceptingRef.current = false;
         }
     };
 
@@ -941,52 +952,45 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
     const toggleVideo = async () => {
         if (!localStream) return;
 
-        const hasVideo = localStream.getVideoTracks().length > 0;
+        const tracks = localStream.getVideoTracks();
+        const currentlyOff = isVideoOff;
 
-        if (!hasVideo && !isVideoOff) {
-            // Upgrade to video
-            try {
-                const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                const videoTrack = videoStream.getVideoTracks()[0];
-                localStream.addTrack(videoTrack);
-
-                if (peerConnection.current) {
-                    peerConnection.current.addTrack(videoTrack, localStream);
-                    // Negotiator will catch this via onnegotiationneeded
-                }
-
-                setCallType('video');
-                setIsVideoOff(false);
-                socket.emit('call:update_type', { to: recipient, type: 'video' });
-            } catch (err) {
-                console.error("Failed to add video track:", err);
-            }
-        } else {
-            const tracks = localStream.getVideoTracks();
+        if (currentlyOff) {
+            // We want to turn video ON
             if (tracks.length > 0) {
-                tracks.forEach(t => t.enabled = isVideoOff);
-                const newIsVideoOff = !isVideoOff;
-                setIsVideoOff(newIsVideoOff);
-
-                if (!newIsVideoOff) {
-                    setCallType('video');
-                    socket.emit('call:update_type', { to: recipient, type: 'video' });
-                }
-            } else if (!isVideoOff) {
-                // If we want video ON but have no track, try to get one
+                // Already have tracks, just enable them
+                tracks.forEach(t => t.enabled = true);
+                setIsVideoOff(false);
+                setCallType('video');
+                socket.emit('call:update_type', { to: recipient, type: 'video' });
+            } else {
+                // No video tracks yet, must upgrade/request
                 try {
                     const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
                     const videoTrack = videoStream.getVideoTracks()[0];
                     localStream.addTrack(videoTrack);
+
                     if (peerConnection.current) {
+                        // For WebRTC, we need to add the track to the peer connection
+                        // and negotiate if it's already connected.
                         peerConnection.current.addTrack(videoTrack, localStream);
                     }
+
                     setIsVideoOff(false);
                     setCallType('video');
-                } catch (e) {
-                    console.error("Still no video track", e);
+                    socket.emit('call:update_type', { to: recipient, type: 'video' });
+                } catch (err) {
+                    console.error("Failed to add video track:", err);
+                    alert("Could not access camera for video.");
                 }
             }
+        } else {
+            // We want to turn video OFF
+            if (tracks.length > 0) {
+                tracks.forEach(t => t.enabled = false);
+            }
+            setIsVideoOff(true);
+            // Optionally we could stay as 'video' type but just show avatar
         }
     };
 
@@ -1057,12 +1061,6 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
                     <button className="snap-chat-icon-btn-circle" onClick={() => initiateCall('audio')}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                        </svg>
-                    </button>
-                    <button className="snap-chat-icon-btn-circle" onClick={() => initiateCall('video')}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <polygon points="23 7 16 12 23 17 23 7"></polygon>
-                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
                         </svg>
                     </button>
                 </div>
@@ -1388,28 +1386,7 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
                 </div>
             )}
 
-            {incomingCall && (
-                <div className="call-overlay incoming">
-                    <div className="call-info">
-                        <img
-                            className="call-avatar large-avatar"
-                            src={incomingCall.avatar?.startsWith('http') || incomingCall.avatar?.startsWith('data:') ? incomingCall.avatar : `https://api.dicebear.com/7.x/open-peeps/svg?seed=${incomingCall.avatar || incomingCall.from}&backgroundColor=transparent`}
-                            alt="caller"
-                        />
-                        <h3>{incomingCall.from}</h3>
-                        <p>Incoming {incomingCall.type} call</p>
-                    </div>
-                    <div className="call-actions-bottom">
-                        <button className="call-btn accept" onClick={handleAcceptCall}>Join</button>
-                        <button className="call-btn decline" onClick={handleRejectCall}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            )}
+
 
             {callActive && (
                 <div className="call-overlay active-call premium-call">
@@ -1516,6 +1493,28 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
                         <button className="call-control-btn end" onClick={endCall}>
                             <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" transform="rotate(135 12 12)" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            )}
+            {incomingCall && (
+                <div className="call-overlay incoming" style={{ zIndex: 10001 }}>
+                    <div className="call-info">
+                        <img
+                            className="call-avatar large-avatar"
+                            src={incomingCall.avatar?.startsWith('http') || incomingCall.avatar?.startsWith('data:') ? incomingCall.avatar : `https://api.dicebear.com/7.x/open-peeps/svg?seed=${incomingCall.avatar || incomingCall.from}&backgroundColor=transparent`}
+                            alt="caller"
+                        />
+                        <h3>{incomingCall.from}</h3>
+                        <p>Incoming {incomingCall.type} call</p>
+                    </div>
+                    <div className="call-actions-bottom">
+                        <button className="call-btn accept" onClick={handleAcceptCall}>Answer</button>
+                        <button className="call-btn decline" onClick={handleRejectCall}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
                             </svg>
                         </button>
                     </div>

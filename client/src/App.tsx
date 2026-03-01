@@ -23,10 +23,12 @@ function AuthenticatedApp() {
             {/* Global Global Call Overlay (displays on any screen) */}
             {(() => {
                 const incomingCall = useGameStore(s => s.incomingCall);
-                if (!incomingCall) return null;
+                const activeChatRecipient = useGameStore(s => s.activeChatRecipient);
 
-                // If we are in Lobby and SnapChatView is open, it might show its own overlay.
-                // But App-level overlay is a safer catch-all.
+                if (!incomingCall) return null;
+                // If we are already in a chat with this person, let SnapChatView handle its own overlay
+                if (activeChatRecipient === incomingCall.from) return null;
+
                 return (
                     <div className="call-overlay incoming" style={{ zIndex: 10000 }}>
                         <div className="call-info">
@@ -43,6 +45,8 @@ function AuthenticatedApp() {
                                 const store = useGameStore.getState();
                                 store.setScreen('lobby');
                                 store.setActiveChatRecipient(incomingCall.from);
+                                // Note: We don't nullify in store.incomingCall here yet, 
+                                // because SnapChatView needs to see it to accept the offer once it mounts.
                             }}>
                                 Answer
                             </button>
