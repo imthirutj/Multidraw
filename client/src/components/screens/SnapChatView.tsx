@@ -66,6 +66,7 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
     const [callDuration, setCallDuration] = useState(0);
     const [isMuted, setIsMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(true); // starts as true (no video by default)
+    const [isRemoteVideoOff, setIsRemoteVideoOff] = useState(true);
     const [callRejectedInfo, setCallRejectedInfo] = useState<{ username: string } | null>(null);
 
     const isCallingOutgoing = useGameStore(s => s.isCallingOutgoing);
@@ -234,6 +235,7 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
         socket.on('call:type_updated', ({ type }) => {
             console.log("🔄 Peer updated call type to:", type);
             setCallType(type);
+            setIsRemoteVideoOff(type !== 'video');
         });
 
         // Handle incoming renegotiation offers if they come via call:incoming (which happens when peer calls request)
@@ -825,7 +827,10 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
 
     const initiateCall = async (type: 'audio' | 'video') => {
         setCallType(type);
-        if (type === 'video') setIsVideoOff(false);
+        if (type === 'video') {
+            setIsVideoOff(false);
+            setIsRemoteVideoOff(false);
+        }
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: type === 'video',
@@ -855,7 +860,10 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
 
         const type = incomingCall.type;
         setCallType(type);
-        if (type === 'video') setIsVideoOff(false);
+        if (type === 'video') {
+            setIsVideoOff(false);
+            setIsRemoteVideoOff(false);
+        }
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: type === 'video',
@@ -990,7 +998,7 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
                 tracks.forEach(t => t.enabled = false);
             }
             setIsVideoOff(true);
-            // Optionally we could stay as 'video' type but just show avatar
+            socket.emit('call:update_type', { to: recipient, type: 'audio' });
         }
     };
 
@@ -1424,10 +1432,10 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
                             ref={remoteVideoRef}
                             autoPlay
                             playsInline
-                            className={`remote-video-full ${(callType !== 'video' || isVideoOff) ? 'hidden-audio-only' : ''}`}
+                            className={`remote-video-full ${isRemoteVideoOff ? 'hidden-audio-only' : ''}`}
                         />
 
-                        {(callType === 'audio' || isVideoOff) && (
+                        {isRemoteVideoOff && (
                             <div className="remote-avatar-container">
                                 <img
                                     className="remote-avatar-large"
