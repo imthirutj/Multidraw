@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../../store/game.store';
 
-const UserProfile = ({ inline = false }: { inline?: boolean }) => {
+const UserProfile = ({ inline = false, snapStyle = false }: { inline?: boolean, snapStyle?: boolean }) => {
     const [isOpen, setIsOpen] = useState(false);
     const { roomCode } = useGameStore();
 
@@ -26,15 +26,28 @@ const UserProfile = ({ inline = false }: { inline?: boolean }) => {
 
     return (
         <div style={containerStyle}>
-            <button
-                className="btn btn-ghost"
-                style={{ borderRadius: '30px', padding: '6px 14px', width: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}
-                onClick={() => setIsOpen(!isOpen)}
-            >
-                <span style={{ fontSize: '18px' }}>👤</span>
-                <span style={{ fontWeight: 'bold' }}>{username}</span>
-                <span style={{ fontSize: '10px', marginLeft: '4px' }}>▼</span>
-            </button>
+            {snapStyle ? (
+                <button
+                    style={{
+                        width: '36px', height: '36px', borderRadius: '50%', background: '#eee',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        border: 'none', cursor: 'pointer', fontSize: '18px'
+                    }}
+                    onClick={() => setIsOpen(!isOpen)}
+                >
+                    👤
+                </button>
+            ) : (
+                <button
+                    className="btn btn-ghost"
+                    style={{ borderRadius: '30px', padding: '6px 14px', width: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}
+                    onClick={() => setIsOpen(!isOpen)}
+                >
+                    <span style={{ fontSize: '18px' }}>👤</span>
+                    <span style={{ fontWeight: 'bold' }}>{username}</span>
+                    <span style={{ fontSize: '10px', marginLeft: '4px' }}>▼</span>
+                </button>
+            )}
 
             {isOpen && (
                 <div style={{

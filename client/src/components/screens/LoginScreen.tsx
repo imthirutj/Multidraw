@@ -28,6 +28,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             }
 
             localStorage.setItem('user', JSON.stringify(data.user));
+            localStorage.setItem('token', data.token);
             onLogin(data.user);
         } catch (err: any) {
             setError(err.message);

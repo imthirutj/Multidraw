@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma';
+import env from '../config/env';
 
 const router = Router();
 
@@ -90,12 +92,28 @@ router.post('/login', async (req, res) => {
                     lastLoginAt: new Date()
                 }
             });
+
+            const io = req.app.get('io');
+            if (io) {
+                const users = await prisma.user.findMany({
+                    select: { id: true, username: true, lastLoginAt: true, updatedAt: true },
+                    orderBy: { lastLoginAt: 'desc' }
+                });
+                io.emit('system:update', { type: 'users', data: users });
+            }
         } catch (dbError) {
             console.error('Failed to update login record on user:', dbError);
         }
 
-        // Return the user object (without password)
+        // Return the user object (without password) and token
+        const token = jwt.sign(
+            { id: user.id, username: user.username },
+            env.JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
         res.json({
+            token,
             user: {
                 id: user.id,
                 username: user.username,
@@ -104,6 +122,25 @@ router.post('/login', async (req, res) => {
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.get('/users', async (req, res) => {
+    try {
+        const users = await prisma.user.findMany({
+            select: {
+                id: true,
+                username: true,
+                lastLoginAt: true,
+                updatedAt: true,
+            },
+            orderBy: {
+                lastLoginAt: 'desc'
+            }
+        });
+        res.json(users);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch users' });
     }
 });
 

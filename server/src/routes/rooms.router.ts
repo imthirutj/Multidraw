@@ -2,12 +2,14 @@ import { Router, Request, Response } from 'express';
 import { RoomRepository } from '../repositories/room.repository';
 import type { CreateRoomBody } from '../types/game.types';
 import { generateRoomCode } from '../utils/scoring';
+import { authMiddleware, AuthRequest } from '../middleware/auth.middleware';
 
 const router = Router();
+router.use(authMiddleware);
 
-router.post('/', async (req: Request<{}, {}, CreateRoomBody>, res: Response) => {
+router.post('/', async (req: AuthRequest, res: Response) => {
     try {
-        const { roomName, gameType, totalRounds, roundDuration, maxPlayers, isPublic } = req.body;
+        const { roomName, gameType, totalRounds, roundDuration, maxPlayers, isPublic } = req.body as CreateRoomBody;
         const room = await RoomRepository.create({
             roomCode: generateRoomCode(),
             roomName: roomName || 'Drawing Room',
@@ -17,6 +19,13 @@ router.post('/', async (req: Request<{}, {}, CreateRoomBody>, res: Response) => 
             roundDuration: roundDuration || 80,
             maxPlayers: maxPlayers || 8,
         });
+
+        const io = req.app.get('io');
+        if (io) {
+            const rooms = await RoomRepository.findWaitingPublic();
+            io.emit('system:update', { type: 'rooms', data: rooms });
+        }
+
         res.status(201).json({ roomCode: room.roomCode, roomName: room.roomName });
     } catch (err) {
         res.status(500).json({ error: err instanceof Error ? err.message : 'Server error' });

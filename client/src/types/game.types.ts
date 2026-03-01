@@ -106,7 +106,9 @@ export interface ServerToClientEvents {
     'bs:spun': (payload: { rotationOffset: number; targetIndex: number; targetSocketId: string; promptType: 'truth' | 'dare'; promptText: string }) => void;
     'bs:answered': (payload: { action: 'complete' | 'skip' | 'refuse'; answer: string; targetName: string; pointDelta: number; spinnerName?: string; question?: string; players?: import('./game.types').Player[] }) => void;
     'room:kicked': () => void;
-    'wt:bookmarks': (payload: { bookmarks: PublicBookmark[] }) => void;
-    'vc:state': (payload: { players: VisitCityPlayer[] }) => void;
-    'vc:moved': (payload: VisitCityPlayer) => void;
+    'wt:bookmarks': (payload: { bookmarks: any[] }) => void;
+    'vc:state': (payload: { players: any[] }) => void;
+    'vc:moved': (payload: any) => void;
+    'direct_message': (msg: { id: string; text: string; sender: string; createdAt: string; }) => void;
+    'system:update': (payload: { type: 'rooms' | 'users'; data: any }) => void;
 }

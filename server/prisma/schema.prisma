@@ -49,6 +49,10 @@ model User {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
+  sentMessages      DirectMessage[] @relation("sentMessages")
+  receivedMessages  DirectMessage[] @relation("receivedMessages")
+
+  @@index([username])
   @@map("users")
 }
 
@@ -61,4 +65,22 @@ model PublicBookmark {
   createdAt    DateTime @default(now())
 
   @@map("public_bookmarks")
+}
+
+model DirectMessage {
+  id            String   @id @default(cuid())
+  senderId      String
+  receiverId    String
+  content       String
+  type          String   @default("text") // 'text' or 'voice'
+  voiceDuration Int?     // duration in seconds
+  createdAt     DateTime @default(now())
+
+  sender     User     @relation("sentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("receivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, receiverId, createdAt])
+  @@index([receiverId, senderId, createdAt])
+  @@index([createdAt])
+  @@map("direct_messages")
 }

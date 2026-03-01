@@ -13,7 +13,6 @@ function AuthenticatedApp() {
     const { screen, fatalError } = useGameStore(s => ({ screen: s.screen, fatalError: s.fatalError }));
     return (
         <>
-            {screen !== 'game' && screen !== 'waiting' && <UserProfile />}
             {screen === 'lobby' && <LobbyScreen />}
             {screen === 'waiting' && <WaitingScreen />}
             {screen === 'game' && <GameScreen />}

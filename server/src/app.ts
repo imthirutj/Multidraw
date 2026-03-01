@@ -4,18 +4,21 @@ import path from 'path';
 import roomsRouter from './routes/rooms.router';
 import watchRouter from './routes/watch.router';
 import authRouter from './routes/auth.router';
+import chatRouter from './routes/chat.router';
 import env from './config/env';
 
 const app = express();
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(cors({ origin: [env.CLIENT_URL, 'http://localhost:3001'] }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Increased for voice notes base64
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/rooms', roomsRouter);
 app.use('/api/watch', watchRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/chat', chatRouter);
 
 // Health check endpoint for cron jobs (e.g. Keep Alive on Render)
 app.get('/api/health', (_req, res) => {
