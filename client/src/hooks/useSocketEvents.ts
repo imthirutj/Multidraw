@@ -195,6 +195,16 @@ export function useSocketEvents(): void {
             useGameStore.getState().setIncomingCall(payload);
         });
 
+        socket.on('auth:kicked', ({ reason }) => {
+            console.warn('🔐 Session terminated by server:', reason);
+            // Clear all local auth data
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('playerName');
+            // Show a brief message before reloading
+            useGameStore.getState().setFatalError(`🔐 ${reason}\n\nYou have been logged out.`);
+        });
+
         return () => {
             socket.removeAllListeners();
         };

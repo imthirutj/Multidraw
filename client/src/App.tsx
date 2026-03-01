@@ -20,6 +20,48 @@ function AuthenticatedApp() {
             {screen === 'game' && <GameScreen />}
             {screen === 'gameover' && <GameOverScreen />}
 
+            {/* Global Global Call Overlay (displays on any screen) */}
+            {(() => {
+                const incomingCall = useGameStore(s => s.incomingCall);
+                if (!incomingCall) return null;
+
+                // If we are in Lobby and SnapChatView is open, it might show its own overlay.
+                // But App-level overlay is a safer catch-all.
+                return (
+                    <div className="call-overlay incoming" style={{ zIndex: 10000 }}>
+                        <div className="call-info">
+                            <img
+                                className="call-avatar large-avatar"
+                                src={incomingCall.avatar?.startsWith('http') || incomingCall.avatar?.startsWith('data:') ? incomingCall.avatar : `https://api.dicebear.com/7.x/open-peeps/svg?seed=${incomingCall.avatar || incomingCall.from}&backgroundColor=transparent`}
+                                alt="caller"
+                            />
+                            <h3>{incomingCall.from}</h3>
+                            <p>Incoming {incomingCall.type} call</p>
+                        </div>
+                        <div className="call-actions-bottom" style={{ transform: 'scale(1.2)' }}>
+                            <button className="call-btn accept" onClick={() => {
+                                const store = useGameStore.getState();
+                                store.setScreen('lobby');
+                                store.setActiveChatRecipient(incomingCall.from);
+                            }}>
+                                Answer
+                            </button>
+                            <button className="call-btn decline" onClick={() => {
+                                import('./config/socket').then(m => {
+                                    m.default.emit('call:response', { to: incomingCall.from, accepted: false });
+                                });
+                                useGameStore.getState().setIncomingCall(null);
+                            }}>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                );
+            })()}
+
             {/* Fatal Error Modal */}
             {fatalError && (
                 <div className="modal-overlay" style={{ zIndex: 9999 }}>

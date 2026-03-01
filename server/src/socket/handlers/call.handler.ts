@@ -11,26 +11,28 @@ export function registerCallHandlers(io: IoServer, socket: AppSocket): void {
         return sockets.find(s => s.data.username === username);
     };
 
-    socket.on('call:request', ({ to, offer, type }) => {
+    socket.on('call:request', ({ to, offer, type, avatar }) => {
         const targetSocket = findSocketByUsername(to);
         if (targetSocket) {
             targetSocket.emit('call:incoming', {
                 from: socket.data.username!,
                 offer,
-                type
+                type,
+                avatar
             });
         } else {
             socket.emit('error', { message: `User ${to} is offline` });
         }
     });
 
-    socket.on('call:response', ({ to, answer, accepted }) => {
+    socket.on('call:response', ({ to, answer, accepted, avatar }) => {
         const targetSocket = findSocketByUsername(to);
         if (targetSocket) {
             if (accepted) {
                 targetSocket.emit('call:accepted', {
                     from: socket.data.username!,
-                    answer
+                    answer,
+                    avatar
                 });
             } else {
                 targetSocket.emit('call:rejected', {

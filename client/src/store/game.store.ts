@@ -42,12 +42,13 @@ interface GameState {
     chatMessages: ChatMessage[];
     leaderboard: Player[];
     fatalError: string | null;
+    activeChatRecipient: string | null;
 
     // Visit City
     vcPlayers: VisitCityPlayer[];
 
     // Calling
-    incomingCall: { from: string; offer: any; type: 'audio' | 'video' } | null;
+    incomingCall: { from: string; offer: any; type: 'audio' | 'video'; avatar?: string } | null;
     isCallingOutgoing: boolean;
     isCallConnected: boolean;
 
@@ -74,6 +75,7 @@ interface GameState {
     setIncomingCall: (call: GameState['incomingCall']) => void;
     setCallingOutgoing: (val: boolean) => void;
     setCallConnected: (val: boolean) => void;
+    setActiveChatRecipient: (val: string | null) => void;
     reset: () => void;
 }
 
@@ -109,6 +111,7 @@ const initialState = {
     chatMessages: [] as ChatMessage[],
     leaderboard: [] as Player[],
     fatalError: null as string | null,
+    activeChatRecipient: null as string | null,
     vcPlayers: [] as VisitCityPlayer[],
     incomingCall: null as GameState['incomingCall'],
     isCallingOutgoing: false,
@@ -145,5 +148,6 @@ export const useGameStore = create<GameState>(set => ({
     setIncomingCall: incomingCall => set({ incomingCall }),
     setCallingOutgoing: isCallingOutgoing => set({ isCallingOutgoing }),
     setCallConnected: isCallConnected => set({ isCallConnected }),
+    setActiveChatRecipient: activeChatRecipient => set({ activeChatRecipient }),
     reset: () => set(initialState),
 }));

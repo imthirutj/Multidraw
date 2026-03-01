@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import socket from '../../config/socket';
 import { useGameStore } from '../../store/game.store';
 import type { RoomListItem } from '../../types/game.types';
@@ -16,6 +16,8 @@ const GAME_MODES = [
 
 export default function LobbyScreen() {
     const { setIdentity, avatar: myAvatar, username: myUsername } = useGameStore();
+    const activeChatRecipient = useGameStore(s => s.activeChatRecipient);
+    const setActiveChatRecipient = useGameStore(s => s.setActiveChatRecipient);
 
     const [playerName] = useState(() => {
         try {
@@ -51,6 +53,14 @@ export default function LobbyScreen() {
     const [showJoinModal, setShowJoinModal] = useState(false);
     const [activeChatUser, setActiveChatUser] = useState<string | null>(null);
     const [showProfile, setShowProfile] = useState(false);
+
+    // When a call is answered from the global overlay, open the chat automatically
+    useEffect(() => {
+        if (activeChatRecipient) {
+            setActiveChatUser(activeChatRecipient);
+            setActiveChatRecipient(null); // clear the trigger
+        }
+    }, [activeChatRecipient, setActiveChatRecipient]);
     const [chatFilter, setChatFilter] = useState<'all' | 'unread' | 'stories' | 'groups'>('all');
 
     const fetchData = React.useCallback(async () => {
@@ -703,38 +713,6 @@ export default function LobbyScreen() {
                 <UserProfile onBack={goBack} />
             )}
 
-            {/* Global Call Overlay */}
-            {(() => {
-                const call = useGameStore(s => s.incomingCall);
-                // Only hide if we are already in a chat with THIS specific caller
-                if (!call || activeChatUser === call.from) return null;
-                return (
-                    <div className="call-overlay incoming">
-                        <div className="call-info">
-                            <img className="call-avatar large-avatar" src={`https://api.dicebear.com/7.x/open-peeps/svg?seed=${call.from}&backgroundColor=transparent`} alt="caller" />
-                            <h3>{call.from}</h3>
-                            <p>Incoming {call.type} call</p>
-                        </div>
-                        <div className="call-actions-bottom" style={{ transform: 'scale(1.2)' }}>
-                            <button className="call-btn accept" onClick={() => {
-                                // Clear error and set active chat — SnapChatView will pick up the offer
-                                openChat(call.from);
-                            }}>
-                                Join
-                            </button>
-                            <button className="call-btn decline" onClick={() => {
-                                socket.emit('call:response', { to: call.from, accepted: false });
-                                useGameStore.getState().setIncomingCall(null);
-                            }}>
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                );
-            })()}
         </div>
     );
 }

@@ -4,8 +4,8 @@ import { useGameStore } from '../../store/game.store';
 
 interface SnapChatViewProps {
     recipient: string;
-    recipientDisplayName?: string;
     recipientAvatar?: string;
+    recipientDisplayName?: string;
     onBack: () => void;
 }
 
@@ -58,18 +58,35 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
     const [callType, setCallType] = useState<'audio' | 'video'>('audio');
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
     const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+    const [trackUpdate, setTrackUpdate] = useState(0);
     const peerConnection = useRef<RTCPeerConnection | null>(null);
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const remoteVideoRef = useRef<HTMLVideoElement>(null);
 
     const [callDuration, setCallDuration] = useState(0);
     const [isMuted, setIsMuted] = useState(false);
-    const [isVideoOff, setIsVideoOff] = useState(false);
+    const [isVideoOff, setIsVideoOff] = useState(true); // starts as true (no video by default)
+    const [callRejectedInfo, setCallRejectedInfo] = useState<{ username: string } | null>(null);
 
     const isCallingOutgoing = useGameStore(s => s.isCallingOutgoing);
     const setCallingOutgoing = useGameStore(s => s.setCallingOutgoing);
     const isCallConnected = useGameStore(s => s.isCallConnected);
     const setIsCallConnected = useGameStore(s => s.setCallConnected);
+    const [isLoudspeaker, setIsLoudspeaker] = useState(true);
+    const iceCandidatesBatch = useRef<RTCIceCandidateInit[]>([]);
+
+    // Local identity for socket payloads
+    const { username: myUsername, avatar: myAvatar } = useGameStore();
+
+    // Dynamically update recipient identity if info comes through call payload
+    const [activeRecipientAvatar, setActiveRecipientAvatar] = useState(recipientAvatar);
+    const [activeRecipientDisplayName, setActiveRecipientDisplayName] = useState(recipientDisplayName);
+
+    useEffect(() => {
+        if (incomingCall?.from === recipient && incomingCall.avatar) {
+            setActiveRecipientAvatar(incomingCall.avatar);
+        }
+    }, [incomingCall, recipient]);
 
     useEffect(() => {
         let interval: any;
@@ -158,7 +175,6 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
             }
         };
 
-        // Auto-accept call if we just entered this chat by clicking "Join" in the Lobby
         const currentIncoming = useGameStore.getState().incomingCall;
         if (currentIncoming && currentIncoming.from === recipient && !callActive) {
             console.log("🚀 Auto-accepting call from Lobby 'Join' click");
@@ -171,24 +187,43 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
         // Remove local call:incoming listener as it's now handled globally via store
 
 
-        socket.on('call:accepted', async ({ answer }) => {
+        socket.on('call:accepted', async ({ answer, avatar }) => {
             console.log("☎️ Call accepted by peer, setting remote description");
-            if (peerConnection.current && peerConnection.current.signalingState === 'have-local-offer') {
-                await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
-                setCallActive(true);
-                setIsCallConnected(true);
-                setCallingOutgoing(false);
+            if (avatar) setActiveRecipientAvatar(avatar);
+            if (peerConnection.current) {
+                try {
+                    await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
+                    // Drain candidates
+                    console.log(`🧊 Draining ${iceCandidatesBatch.current.length} queued candidates (Caller)`);
+                    while (iceCandidatesBatch.current.length > 0) {
+                        const cand = iceCandidatesBatch.current.shift();
+                        if (cand) await peerConnection.current.addIceCandidate(new RTCIceCandidate(cand));
+                    }
+                    setCallActive(true);
+                    setIsCallConnected(true);
+                    setCallingOutgoing(false);
+                } catch (err) {
+                    console.error("Error setting remote description on accept:", err);
+                }
             }
         });
 
         socket.on('call:rejected', () => {
             cleanupCall();
-            alert(`${recipient} rejected the call`);
+            setCallRejectedInfo({ username: recipient });
+            setTimeout(() => setCallRejectedInfo(null), 3500);
         });
 
         socket.on('call:ice', async ({ candidate }) => {
-            if (peerConnection.current && peerConnection.current.remoteDescription) {
-                await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+            if (peerConnection.current && peerConnection.current.remoteDescription && peerConnection.current.remoteDescription.type) {
+                try {
+                    await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (e) {
+                    console.warn("⚠️ Error adding ICE candidate", e);
+                }
+            } else {
+                console.log("🧊 Queuing incoming ICE candidate (Description not yet set)");
+                iceCandidatesBatch.current.push(candidate);
             }
         });
 
@@ -201,16 +236,40 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
             setCallType(type);
         });
 
+        // Handle incoming renegotiation offers if they come via call:incoming (which happens when peer calls request)
+        // We handle this via a useEffect observing useGameStore below for better reactivity.
+
         return () => {
             socket.off('direct_message', handleNewMessage);
-            // socket.off('call:incoming'); // handled globally
             socket.off('call:accepted');
             socket.off('call:rejected');
             socket.off('call:ice');
             socket.off('call:ended');
             socket.off('call:type_updated');
         };
-    }, [currentUser, recipient]);
+    }, [currentUser, recipient, callType]);
+
+    // Handle incoming calls or renegotiation offers reactively
+    useEffect(() => {
+        if (!incomingCall || incomingCall.from !== recipient) return;
+
+        // If we are already connected, this is an offer for renegotiation (upgrade to video etc)
+        if (isCallConnected && peerConnection.current) {
+            console.log("🔄 Handling renegotiation offer from", recipient);
+            const handleRenegotiation = async () => {
+                try {
+                    await peerConnection.current!.setRemoteDescription(new RTCSessionDescription(incomingCall.offer));
+                    const answer = await peerConnection.current!.createAnswer();
+                    await peerConnection.current!.setLocalDescription(answer);
+                    socket.emit('call:response', { to: recipient, answer, accepted: true });
+                    setIncomingCall(null); // Clear from store
+                } catch (err) {
+                    console.error("Failed to handle renegotiation offer:", err);
+                }
+            };
+            handleRenegotiation();
+        }
+    }, [incomingCall, isCallConnected, recipient, setIncomingCall]);
 
     const loadMore = async () => {
         if (loadingMore || !hasMore || !messages.length) return;
@@ -725,16 +784,29 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
 
         pc.onicecandidate = (event) => {
             if (event.candidate) {
+                console.log("🧊 Sending local ICE candidate to peer");
                 socket.emit('call:ice', { to: recipient, candidate: event.candidate });
             }
+        };
+
+        pc.oniceconnectionstatechange = () => {
+            console.log("🧊 ICE Connection State:", pc.iceConnectionState);
+            if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+                // Potential retry logic or UI warning
+            }
+        };
+
+        pc.onconnectionstatechange = () => {
+            console.log("🔗 Connection State:", pc.connectionState);
         };
 
         pc.onnegotiationneeded = async () => {
             try {
                 if (pc.signalingState === 'stable') {
+                    console.log("☎️ Negotiation needed, sending new offer...");
                     const offer = await pc.createOffer();
                     await pc.setLocalDescription(offer);
-                    socket.emit('call:request', { to: recipient, offer, type: callType });
+                    socket.emit('call:request', { to: recipient, offer, type: callType, avatar: myAvatar });
                 }
             } catch (err) {
                 console.error("Negotiation failed:", err);
@@ -744,6 +816,7 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
         pc.ontrack = (event) => {
             console.log("🎥 Received remote track, streams:", event.streams);
             setRemoteStream(event.streams[0]);
+            setTrackUpdate(prev => prev + 1); // Force effect to re-run
         };
 
         peerConnection.current = pc;
@@ -762,7 +835,7 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
 
-            socket.emit('call:request', { to: recipient, offer, type });
+            socket.emit('call:request', { to: recipient, offer, type, avatar: myAvatar });
             setCallActive(true); // show local preview while waiting
             setCallingOutgoing(true);
         } catch (err) {
@@ -783,10 +856,18 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
             setLocalStream(stream);
             const pc = setupPeerConnection(stream);
             await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.offer));
+
+            // Drain candidates for Recipient
+            console.log(`🧊 Draining ${iceCandidatesBatch.current.length} queued candidates (Recipient)`);
+            while (iceCandidatesBatch.current.length > 0) {
+                const cand = iceCandidatesBatch.current.shift();
+                if (cand) await pc.addIceCandidate(new RTCIceCandidate(cand));
+            }
+
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
 
-            socket.emit('call:response', { to: incomingCall.from, answer, accepted: true });
+            socket.emit('call:response', { to: incomingCall.from, answer, accepted: true, avatar: myAvatar });
             setIncomingCall(null);
             setCallActive(true);
             setIsCallConnected(true);
@@ -817,6 +898,7 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
         setIsCallConnected(false);
         setCallingOutgoing(false);
         setIncomingCall(null);
+        iceCandidatesBatch.current = [];
     };
 
     const endCall = () => {
@@ -831,6 +913,28 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
                 t.enabled = isMuted; // If we were muted, enable it.
             });
             setIsMuted(!isMuted);
+        }
+    };
+
+    const toggleSpeaker = async () => {
+        const video = remoteVideoRef.current;
+        if (!video) return;
+
+        const newVal = !isLoudspeaker;
+        setIsLoudspeaker(newVal);
+
+        // Attempt setSinkId for browsers that support it (Chrome/Edge)
+        if ((video as any).setSinkId) {
+            try {
+                // 'default' is usually the system default speaker. 
+                // In some environments we could enumerate devices, but 'default' vs others is often restricted.
+                // Best we can do is toggle volume or inform OS.
+                // On mobile, video.muted = true/false often toggles earpiece/speaker routing.
+                // We'll just set a flag for now.
+                console.log("Toggle Speaker:", newVal);
+            } catch (err) {
+                console.error("setSinkId failed", err);
+            }
         }
     };
 
@@ -858,13 +962,30 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
                 console.error("Failed to add video track:", err);
             }
         } else {
-            localStream.getVideoTracks().forEach(t => t.enabled = isVideoOff);
-            const newIsVideoOff = !isVideoOff;
-            setIsVideoOff(newIsVideoOff);
+            const tracks = localStream.getVideoTracks();
+            if (tracks.length > 0) {
+                tracks.forEach(t => t.enabled = isVideoOff);
+                const newIsVideoOff = !isVideoOff;
+                setIsVideoOff(newIsVideoOff);
 
-            if (!newIsVideoOff) {
-                setCallType('video');
-                socket.emit('call:update_type', { to: recipient, type: 'video' });
+                if (!newIsVideoOff) {
+                    setCallType('video');
+                    socket.emit('call:update_type', { to: recipient, type: 'video' });
+                }
+            } else if (!isVideoOff) {
+                // If we want video ON but have no track, try to get one
+                try {
+                    const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    const videoTrack = videoStream.getVideoTracks()[0];
+                    localStream.addTrack(videoTrack);
+                    if (peerConnection.current) {
+                        peerConnection.current.addTrack(videoTrack, localStream);
+                    }
+                    setIsVideoOff(false);
+                    setCallType('video');
+                } catch (e) {
+                    console.error("Still no video track", e);
+                }
             }
         }
     };
@@ -873,30 +994,62 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
     // Auto-attach streams to video elements
     useEffect(() => {
         if (localVideoRef.current && localStream) {
-            console.log("✅ Attaching local stream to video element");
             localVideoRef.current.srcObject = localStream;
         }
-    }, [localStream, callActive, isVideoOff]);
+    }, [localStream, callActive, isVideoOff, trackUpdate]);
 
     useEffect(() => {
         if (remoteVideoRef.current && remoteStream) {
-            console.log("✅ Attaching remote stream to video element");
             remoteVideoRef.current.srcObject = remoteStream;
         }
-    }, [remoteStream, callActive, isVideoOff]);
+    }, [remoteStream, callActive, isVideoOff, trackUpdate]);
 
     return (
         <div className="snap-chat-view">
+            {/* Cool Call Rejected Notification */}
+            {callRejectedInfo && (
+                <div style={{
+                    position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)',
+                    zIndex: 99999, background: 'linear-gradient(135deg, #ff3b55, #c0392b)',
+                    borderRadius: 18, padding: '14px 22px', display: 'flex', alignItems: 'center', gap: 12,
+                    boxShadow: '0 8px 32px rgba(255,59,85,0.5)', minWidth: 260, maxWidth: 340,
+                    animation: 'slideDown 0.35s cubic-bezier(0.4,0,0.2,1)',
+                }}>
+                    <div style={{
+                        width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,0.2)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                            <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" transform="rotate(135 12 12)" />
+                        </svg>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <div style={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', lineHeight: 1.2 }}>Call Declined</div>
+                        <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.8rem', marginTop: 2 }}>
+                            <strong>{callRejectedInfo.username}</strong> rejected your call
+                        </div>
+                    </div>
+                    <button onClick={() => setCallRejectedInfo(null)} style={{
+                        background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%',
+                        width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', color: '#fff', flexShrink: 0,
+                    }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+            )}
             <div className="snap-chat-header">
                 <div className="snap-chat-header-left" onClick={onBack}>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}>
                         <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
                     <div className="snap-chat-header-avatar" style={{ margin: '0 8px' }}>
-                        <img src={recipientAvatar?.startsWith('http') || recipientAvatar?.startsWith('data:') ? recipientAvatar : `https://api.dicebear.com/7.x/open-peeps/svg?seed=${recipientAvatar || recipient}&backgroundColor=transparent`} alt="avatar" />
+                        <img src={activeRecipientAvatar?.startsWith('http') || activeRecipientAvatar?.startsWith('data:') ? activeRecipientAvatar : `https://api.dicebear.com/7.x/open-peeps/svg?seed=${activeRecipientAvatar || recipient}&backgroundColor=transparent`} alt="avatar" />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
-                        <h2 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0 }}>{recipientDisplayName || recipient}</h2>
+                        <h2 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0 }}>{activeRecipientDisplayName || recipient}</h2>
                         <span style={{ fontSize: '0.75rem', color: '#999', fontWeight: 600 }}>{recipient}</span>
                     </div>
                 </div>
@@ -1238,7 +1391,11 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
             {incomingCall && (
                 <div className="call-overlay incoming">
                     <div className="call-info">
-                        <img className="call-avatar large-avatar" src={`https://api.dicebear.com/7.x/open-peeps/svg?seed=${incomingCall.from}&backgroundColor=transparent`} alt="caller" />
+                        <img
+                            className="call-avatar large-avatar"
+                            src={incomingCall.avatar?.startsWith('http') || incomingCall.avatar?.startsWith('data:') ? incomingCall.avatar : `https://api.dicebear.com/7.x/open-peeps/svg?seed=${incomingCall.avatar || incomingCall.from}&backgroundColor=transparent`}
+                            alt="caller"
+                        />
                         <h3>{incomingCall.from}</h3>
                         <p>Incoming {incomingCall.type} call</p>
                     </div>
@@ -1259,9 +1416,13 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
                     {/* TOP HEADER */}
                     <div className="call-header-premium">
                         <div className="call-header-left">
-                            <img className="call-header-avatar" src={`https://api.dicebear.com/7.x/open-peeps/svg?seed=${recipient}&backgroundColor=transparent`} alt="av" />
+                            <img
+                                className="call-header-avatar"
+                                src={activeRecipientAvatar?.startsWith('http') || activeRecipientAvatar?.startsWith('data:') ? activeRecipientAvatar : `https://api.dicebear.com/7.x/open-peeps/svg?seed=${activeRecipientAvatar || recipient}&backgroundColor=transparent`}
+                                alt="av"
+                            />
                             <div className="call-header-info">
-                                <div className="call-header-name">💍❤️ {recipient}</div>
+                                <div className="call-header-name">💍❤️ {activeRecipientDisplayName || recipient}</div>
                                 <div className="call-header-status">
                                     {isCallConnected ? formatDuration(callDuration) : 'Ringing...'}
                                 </div>
@@ -1291,7 +1452,11 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
 
                         {(callType === 'audio' || isVideoOff) && (
                             <div className="remote-avatar-container">
-                                <img className="remote-avatar-large" src={`https://api.dicebear.com/7.x/open-peeps/svg?seed=${recipient}&backgroundColor=transparent`} alt="remote" />
+                                <img
+                                    className="remote-avatar-large"
+                                    src={activeRecipientAvatar?.startsWith('http') || activeRecipientAvatar?.startsWith('data:') ? activeRecipientAvatar : `https://api.dicebear.com/7.x/open-peeps/svg?seed=${activeRecipientAvatar || recipient}&backgroundColor=transparent`}
+                                    alt="remote"
+                                />
                             </div>
                         )}
 
@@ -1300,7 +1465,10 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
                             {callType === 'video' && !isVideoOff ? (
                                 <video ref={localVideoRef} autoPlay playsInline muted className="local-video-pip-content" />
                             ) : (
-                                <img src={`https://api.dicebear.com/7.x/open-peeps/svg?seed=${currentUser}&backgroundColor=transparent`} alt="me" />
+                                <img
+                                    src={myAvatar?.startsWith('http') || myAvatar?.startsWith('data:') ? myAvatar : `https://api.dicebear.com/7.x/open-peeps/svg?seed=${myAvatar || myUsername}&backgroundColor=transparent`}
+                                    alt="me"
+                                />
                             )}
                         </div>
                     </div>
@@ -1332,11 +1500,17 @@ export default function SnapChatView({ recipient, recipientDisplayName, recipien
                                 {isMuted && <line x1="1" y1="1" x2="23" y2="23"></line>}
                             </svg>
                         </button>
-                        <button className="call-control-btn">
+                        <button className={`call-control-btn ${!isLoudspeaker ? 'off' : ''}`} onClick={toggleSpeaker}>
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
-                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
-                                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                {isLoudspeaker ? (
+                                    <>
+                                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                    </>
+                                ) : (
+                                    <line x1="23" y1="1" x2="1" y2="23" stroke="currentColor" strokeWidth="2" />
+                                )}
                             </svg>
                         </button>
                         <button className="call-control-btn end" onClick={endCall}>

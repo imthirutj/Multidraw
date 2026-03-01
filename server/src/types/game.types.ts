@@ -83,8 +83,8 @@ export interface ClientToServerEvents {
 
 
     // Direct Calling
-    'call:request': (payload: { to: string; offer: any; type: 'audio' | 'video' }) => void;
-    'call:response': (payload: { to: string; answer?: any; accepted: boolean }) => void;
+    'call:request': (payload: { to: string; offer: any; type: 'audio' | 'video'; avatar?: string }) => void;
+    'call:response': (payload: { to: string; answer?: any; accepted: boolean; avatar?: string }) => void;
     'call:ice': (payload: { to: string; candidate: any }) => void;
     'call:end': (payload: { to: string }) => void;
     'call:update_type': (payload: { to: string; type: 'audio' | 'video' }) => void;
@@ -143,12 +143,13 @@ export interface ServerToClientEvents {
     'vc:moved': (payload: VisitCityPlayer) => void;
 
     // Direct Calling
-    'call:incoming': (payload: { from: string; offer: any; type: 'audio' | 'video' }) => void;
-    'call:accepted': (payload: { from: string; answer: any }) => void;
+    'call:incoming': (payload: { from: string; offer: any; type: 'audio' | 'video'; avatar?: string }) => void;
+    'call:accepted': (payload: { from: string; answer: any; avatar?: string }) => void;
     'call:rejected': (payload: { from: string }) => void;
     'call:ice': (payload: { from: string; candidate: any }) => void;
     'call:ended': (payload: { from: string }) => void;
     'call:type_updated': (payload: { from: string; type: 'audio' | 'video' }) => void;
+    'auth:kicked': (payload: { reason: string }) => void;
     error: (payload: { message: string }) => void;
 }
 

@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma';
 import env from '../config/env';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { userSocketMap } from '../socket/index';
 
 const router = Router();
 const IP_SECRET = 'MultiDraw_H0st_56516_Secure_Anonymizer';
@@ -72,6 +73,18 @@ router.post('/login', async (req, res) => {
                 orderBy: { lastLoginAt: 'desc' }
             });
             io.emit('system:update', { type: 'users', data: users });
+
+            // Single-session enforcement: kick any existing active socket for this user
+            const existingSocketId = userSocketMap.get(user.username);
+            if (existingSocketId) {
+                const existingSocket = io.sockets.sockets.get(existingSocketId);
+                if (existingSocket) {
+                    console.log(`⚠️  Login kick: removing old session for ${user.username} (${existingSocketId})`);
+                    existingSocket.emit('auth:kicked', { reason: 'Your account was logged in from another device.' });
+                    existingSocket.disconnect(true);
+                }
+                userSocketMap.delete(user.username);
+            }
         }
 
         const token = jwt.sign({ id: user.id, username: user.username }, env.JWT_SECRET, { expiresIn: '7d' });

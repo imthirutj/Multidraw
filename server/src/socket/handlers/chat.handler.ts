@@ -6,7 +6,7 @@ import { GameService } from '../../services/game.service';
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
-export function registerChatHandlers(io: IoServer, socket: AppSocket, gameService: GameService): void {
+export function registerChatHandlers(io: IoServer, socket: AppSocket, gameService: GameService, userSocketMap: Map<string, string>): void {
     socket.on('chat:guess', async ({ message }) => {
         const { roomCode, username } = socket.data;
         if (!roomCode || !username) return;
@@ -66,6 +66,20 @@ export function registerChatHandlers(io: IoServer, socket: AppSocket, gameServic
     });
 
     socket.on('chat:register', ({ username }) => {
+        // ── Single-session enforcement ──────────────────────────────────────
+        // If another socket is already registered for this username, kick it
+        const existingSocketId = userSocketMap.get(username);
+        if (existingSocketId && existingSocketId !== socket.id) {
+            const existingSocket = io.sockets.sockets.get(existingSocketId) as AppSocket | undefined;
+            if (existingSocket) {
+                console.log(`⚠️  Kicking old session for ${username} (${existingSocketId}) — new login detected`);
+                existingSocket.emit('auth:kicked', { reason: 'You were logged in from another device or tab.' });
+                existingSocket.disconnect(true);
+            }
+        }
+
+        // Register this socket as the active session for this username
+        userSocketMap.set(username, socket.id);
         socket.data.username = username;
         console.log(`👤 Identified: ${socket.id} as ${username}`);
     });
