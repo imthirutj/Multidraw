@@ -9,13 +9,6 @@ import { useGameStore } from '../store/game.store';
 export function useSocketEvents(): void {
     const store = useGameStore();
 
-    // Auto-register identity whenever username is set or socket connects
-    const username = useGameStore(s => s.username);
-    useEffect(() => {
-        if (username && socket.connected) {
-            socket.emit('chat:register', { username });
-        }
-    }, [username]);
 
     useEffect(() => {
         // Update mySocketId on every connect/reconnect
@@ -23,14 +16,9 @@ export function useSocketEvents(): void {
             const newId = socket.id ?? '';
             store.setMySocketId(newId);
 
+            // If we were already in a room (reconnect scenario), re-join automatically
+            // so the server updates our socket ID and we receive events again.
             const { roomCode, username, avatar, screen } = useGameStore.getState();
-
-            // Register username with socket for direct calling/chatting even if not in a room
-            if (username) {
-                socket.emit('chat:register', { username });
-            }
-
-            // If we were already in a room... re-join
             if (roomCode && username && (screen === 'waiting' || screen === 'game')) {
                 socket.emit('room:join', { roomCode, username, avatar });
             }
@@ -166,8 +154,6 @@ export function useSocketEvents(): void {
 
         socket.on('bs:answered', payload => {
             store.setBsAnswer(payload);
-            // Update scores immediately so scoreboard reflects changes alongside the overlay
-            if (payload.players) store.setPlayers(payload.players);
         });
 
         socket.on('wt:state', payload => {
@@ -188,21 +174,6 @@ export function useSocketEvents(): void {
 
         socket.on('error', ({ message }) => {
             store.addChat({ type: 'system', text: `⚠️ ${message}` });
-        });
-
-        socket.on('call:incoming', (payload) => {
-            // Store it globally so App.tsx can show overlay
-            useGameStore.getState().setIncomingCall(payload);
-        });
-
-        socket.on('auth:kicked', ({ reason }) => {
-            console.warn('🔐 Session terminated by server:', reason);
-            // Clear all local auth data
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            localStorage.removeItem('playerName');
-            // Show a brief message before reloading
-            useGameStore.getState().setFatalError(`🔐 ${reason}\n\nYou have been logged out.`);
         });
 
         return () => {

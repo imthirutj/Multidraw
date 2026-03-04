@@ -12,8 +12,7 @@ async function bootstrap(): Promise<void> {
     const httpServer = http.createServer(app);
 
     // Attach Socket.IO
-    const io = initSocketServer(httpServer);
-    app.set('io', io);
+    initSocketServer(httpServer);
 
     // Start listening
     httpServer.listen(env.PORT, () => {

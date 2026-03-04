@@ -9,7 +9,6 @@ export interface Player {
     avatar: string;
     score: number;
     hasGuessedCorrectly: boolean;
-    isConnected?: boolean;
 }
 
 // ─── Round History ────────────────────────────────────────────────────────────
@@ -79,15 +78,6 @@ export interface ClientToServerEvents {
 
     // Visit City
     'vc:move': (payload: VisitCityMovePayload) => void;
-    'chat:register': (payload: { username: string }) => void;
-
-
-    // Direct Calling
-    'call:request': (payload: { to: string; offer: any; type: 'audio' | 'video'; avatar?: string }) => void;
-    'call:response': (payload: { to: string; answer?: any; accepted: boolean; avatar?: string }) => void;
-    'call:ice': (payload: { to: string; candidate: any }) => void;
-    'call:end': (payload: { to: string }) => void;
-    'call:update_type': (payload: { to: string; type: 'audio' | 'video' }) => void;
 }
 
 // ─── Socket Events: Server → Client ──────────────────────────────────────────
@@ -129,7 +119,7 @@ export interface ServerToClientEvents {
     // Bottle Spin
     'bs:spun': (payload: { rotationOffset: number; targetIndex: number; targetSocketId: string }) => void;
     'bs:prompt_set': (payload: { promptType: 'truth' | 'dare'; promptText: string }) => void;
-    'bs:answered': (payload: { action: 'complete' | 'skip' | 'refuse'; answer: string; targetName: string; pointDelta: number; spinnerName?: string; question?: string; players?: Player[] }) => void;
+    'bs:answered': (payload: { action: 'complete' | 'skip' | 'refuse'; answer: string; targetName: string; pointDelta: number; spinnerName?: string; question?: string; }) => void;
 
     'webrtc:user_joined': (payload: { socketId: string }) => void;
     'webrtc:signal': (payload: { from: string; type: string; data: any }) => void;
@@ -142,14 +132,6 @@ export interface ServerToClientEvents {
     'vc:state': (payload: { players: VisitCityPlayer[] }) => void;
     'vc:moved': (payload: VisitCityPlayer) => void;
 
-    // Direct Calling
-    'call:incoming': (payload: { from: string; offer: any; type: 'audio' | 'video'; avatar?: string }) => void;
-    'call:accepted': (payload: { from: string; answer: any; avatar?: string }) => void;
-    'call:rejected': (payload: { from: string }) => void;
-    'call:ice': (payload: { from: string; candidate: any }) => void;
-    'call:ended': (payload: { from: string }) => void;
-    'call:type_updated': (payload: { from: string; type: 'audio' | 'video' }) => void;
-    'auth:kicked': (payload: { reason: string }) => void;
     error: (payload: { message: string }) => void;
 }
 

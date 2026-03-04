@@ -5,9 +5,7 @@ interface GameState {
     // Identity
     mySocketId: string;
     username: string;
-    displayName: string;
     avatar: string;
-    bio: string;
 
     // Room
     roomCode: string;
@@ -42,19 +40,13 @@ interface GameState {
     chatMessages: ChatMessage[];
     leaderboard: Player[];
     fatalError: string | null;
-    activeChatRecipient: string | null;
 
     // Visit City
     vcPlayers: VisitCityPlayer[];
 
-    // Calling
-    incomingCall: { from: string; offer: any; type: 'audio' | 'video'; avatar?: string } | null;
-    isCallingOutgoing: boolean;
-    isCallConnected: boolean;
-
     // Actions
     setMySocketId: (id: string) => void;
-    setIdentity: (username: string, avatar: string, bio?: string, displayName?: string) => void;
+    setIdentity: (username: string, avatar: string) => void;
     setRoom: (payload: Partial<GameState>) => void;
     setPlayers: (players: Player[]) => void;
     setScreen: (screen: Screen) => void;
@@ -72,19 +64,13 @@ interface GameState {
     setFatalError: (err: string | null) => void;
     setVcPlayers: (ps: VisitCityPlayer[]) => void;
     updateVcPlayer: (p: VisitCityPlayer) => void;
-    setIncomingCall: (call: GameState['incomingCall']) => void;
-    setCallingOutgoing: (val: boolean) => void;
-    setCallConnected: (val: boolean) => void;
-    setActiveChatRecipient: (val: string | null) => void;
     reset: () => void;
 }
 
 const initialState = {
     mySocketId: '',
     username: '',
-    displayName: '',
     avatar: '',
-    bio: '',
     roomCode: '',
     roomName: '',
     gameType: 'drawing',
@@ -111,18 +97,14 @@ const initialState = {
     chatMessages: [] as ChatMessage[],
     leaderboard: [] as Player[],
     fatalError: null as string | null,
-    activeChatRecipient: null as string | null,
     vcPlayers: [] as VisitCityPlayer[],
-    incomingCall: null as GameState['incomingCall'],
-    isCallingOutgoing: false,
-    isCallConnected: false,
 };
 
 export const useGameStore = create<GameState>(set => ({
     ...initialState,
 
     setMySocketId: id => set({ mySocketId: id }),
-    setIdentity: (username, avatar, bio = '', displayName = '') => set({ username, avatar, bio, displayName: displayName || username }),
+    setIdentity: (username, avatar) => set({ username, avatar }),
     setRoom: payload => set(payload),
     setPlayers: players => set({ players }),
     setScreen: screen => set({ screen }),
@@ -145,9 +127,5 @@ export const useGameStore = create<GameState>(set => ({
             ? s.vcPlayers.map(x => (x.socketId === p.socketId ? p : x))
             : [...s.vcPlayers, p]
     })),
-    setIncomingCall: incomingCall => set({ incomingCall }),
-    setCallingOutgoing: isCallingOutgoing => set({ isCallingOutgoing }),
-    setCallConnected: isCallConnected => set({ isCallConnected }),
-    setActiveChatRecipient: activeChatRecipient => set({ activeChatRecipient }),
     reset: () => set(initialState),
 }));
